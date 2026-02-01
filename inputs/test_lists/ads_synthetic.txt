@@ -1,0 +1,8 @@
+# Synthetic advertising blocklist
+ads.example.com
+ads2.example.net
+tracker-ads.example.org
+adserving.com
+advertising.net
+0.0.0.0 ads.double-click.net
+127.0.0.1 ads.google.com

@@ -1,0 +1,11 @@
+# Sample hosts-style list
+0.0.0.0 ads.example.com
+127.0.0.1 tracker.example.org
+:: analytics.example.net
+# domain-only
+bad.example.io
+# ABP simple (supported)
+||annoying.example.com^
+# invalid lines
+0.0.0.0 1.2.3.4
+||complex.example.com/path^

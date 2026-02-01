@@ -1,0 +1,5 @@
+# Synthetic tracking blocklist
+tracking.example.com
+analytics.example.net
+metrics.example.org
+pixel.example.com

@@ -1,0 +1,57 @@
+policies:
+  # Precedencia de categorías al particionar dominios que aparezcan en varias.
+  category_precedence: ["malicious", "tracking", "advertising", "suspicious", "other", "telemetry"]
+
+  # Dominios "core" que NO deben bloquearse en perfiles no-strict.
+  # Estos dominios se incluyen en la allowlist generada para Pi-hole v6 Antigravity.
+  core_domains:
+    # Proveedores principales
+    - "apple.com"
+    - "google.com"
+    - "microsoft.com"
+    - "github.com"
+    - "cloudflare.com"
+    - "amazon.com"
+    - "amazonaws.com"
+
+    # CDNs críticos
+    - "cdn.jsdelivr.net"
+    - "cdnjs.cloudflare.com"
+    - "ajax.googleapis.com"
+    - "fonts.googleapis.com"
+    - "fonts.gstatic.com"
+    - "unpkg.com"
+
+    # Autenticación / SSO
+    - "login.microsoftonline.com"
+    - "accounts.google.com"
+    - "appleid.apple.com"
+    - "auth0.com"
+    - "okta.com"
+
+    # Actualizaciones de sistema
+    - "windowsupdate.microsoft.com"
+    - "update.microsoft.com"
+    - "download.windowsupdate.com"
+    - "swscan.apple.com"
+    - "mesu.apple.com"
+    - "updates.cdn-apple.com"
+
+    # APIs populares
+    - "api.github.com"
+    - "api.spotify.com"
+    - "api.twitter.com"
+    - "graph.facebook.com"
+
+    # Pagos
+    - "paypal.com"
+    - "stripe.com"
+    - "checkout.stripe.com"
+
+    # Otros servicios críticos
+    - "slack.com"
+    - "zoom.us"
+    - "teams.microsoft.com"
+
+  # Allowlist base (además de inputs/current_overrides/allowlist.txt)
+  base_allowlist: []

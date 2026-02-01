@@ -1,0 +1,2 @@
+# Patrones (regex) para descartar líneas de entrada (opcional)
+# Ejemplo: ^localhost$

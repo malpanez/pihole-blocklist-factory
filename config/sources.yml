@@ -1,0 +1,192 @@
+# Fuentes declaradas manualmente. Las fuentes auto-generadas de Firebog se cargan
+# desde config/sources.firebog.yml (generado por: blocklist-factory sync-firebog)
+# Campos soportados:
+# - id: string único
+# - name: nombre legible
+# - category: advertising|tracking|malicious|suspicious|other|telemetry
+# - url: http(s)://... | file://... | relative path
+# - enabled: true/false
+# - tier: stable|edge
+# - license: texto corto o URL
+# - notes: riesgo/observaciones
+
+sources:
+  - id: sample_local
+    name: "Sample local list"
+    category: advertising
+    url: "inputs/sample_lists/example_hosts.txt"
+    enabled: true
+    tier: stable
+    license: "internal sample"
+    notes: "Lista local mínima para CI/offline."
+
+  # ============================================================================
+  # HaGeZi DNS Blocklists - https://github.com/hagezi/dns-blocklists
+  # Muy alta calidad, mantenidas activamente, amplia cobertura
+  # ============================================================================
+  - id: hagezi_pro
+    name: "HaGeZi Pro"
+    category: advertising
+    url: "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/domains/pro.txt"
+    enabled: true
+    tier: stable
+    license: "GPL-3.0"
+    notes: "Lista Pro de HaGeZi - ads, tracking, analytics. ~350k dominios."
+
+  - id: hagezi_tif
+    name: "HaGeZi Threat Intelligence Feeds"
+    category: malicious
+    url: "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/domains/tif.txt"
+    enabled: true
+    tier: stable
+    license: "GPL-3.0"
+    notes: "Threat Intelligence - malware, phishing, scam, cryptojacking."
+
+  # HaGeZi Fake - No disponible como lista separada (incluida en TIF)
+  # - id: hagezi_fake
+  #   name: "HaGeZi Fake"
+  #   category: malicious
+  #   url: "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/domains/fake.txt"
+  #   enabled: false
+
+  # ============================================================================
+  # OISD Blocklist - https://oisd.nl/
+  # Lista curada manualmente, muy baja tasa de falsos positivos
+  # ============================================================================
+  # OISD - Temporalmente no disponible (servidor caído)
+  # Habilitar cuando el servidor esté disponible
+  - id: oisd_basic
+    name: "OISD Basic"
+    category: advertising
+    url: "https://dbl.oisd.nl/"
+    enabled: false
+    tier: stable
+    license: "MIT"
+    notes: "Lista OISD - ads y tracking. Muy curada, pocos falsos positivos."
+
+  - id: oisd_nsfw
+    name: "OISD NSFW"
+    category: suspicious
+    url: "https://nsfw.oisd.nl/domains"
+    enabled: false
+    tier: stable
+    license: "MIT"
+    notes: "Contenido adulto. Deshabilitada por defecto."
+
+  # ============================================================================
+  # 1Hosts - https://github.com/badmojr/1Hosts
+  # Listas minimalistas y agresivas
+  # ============================================================================
+  - id: 1hosts_lite
+    name: "1Hosts Lite"
+    category: advertising
+    url: "https://raw.githubusercontent.com/badmojr/1Hosts/master/Lite/domains.txt"
+    enabled: true
+    tier: stable
+    license: "MPL-2.0"
+    notes: "Lista mínima pero efectiva - bajo riesgo de falsos positivos."
+
+  - id: 1hosts_pro
+    name: "1Hosts Pro"
+    category: advertising
+    url: "https://raw.githubusercontent.com/badmojr/1Hosts/master/Pro/domains.txt"
+    enabled: false
+    tier: edge
+    license: "MPL-2.0"
+    notes: "Lista agresiva - puede generar falsos positivos. Deshabilitada por defecto."
+
+  # ============================================================================
+  # StevenBlack Hosts - https://github.com/StevenBlack/hosts
+  # Consolidación clásica de múltiples fuentes
+  # ============================================================================
+  - id: stevenblack_unified
+    name: "StevenBlack Unified Hosts"
+    category: advertising
+    url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+    enabled: true
+    tier: stable
+    license: "MIT"
+    notes: "Consolidación de adaway, mvps, malwaredomainlist, etc."
+
+  # ============================================================================
+  # URLhaus - https://urlhaus.abuse.ch/
+  # Malware y URLs maliciosas
+  # ============================================================================
+  - id: urlhaus_online
+    name: "URLhaus Malware URLs"
+    category: malicious
+    url: "https://urlhaus.abuse.ch/downloads/hostfile/"
+    enabled: true
+    tier: stable
+    license: "CC0"
+    notes: "URLs de malware activas reportadas por la comunidad."
+
+  # ============================================================================
+  # NoTracking - https://github.com/notracking/hosts-blocklists
+  # Tracking y telemetría
+  # ============================================================================
+  - id: notracking_tracker
+    name: "NoTracking Trackers"
+    category: tracking
+    url: "https://raw.githubusercontent.com/notracking/hosts-blocklists/master/dnscrypt-proxy/dnscrypt-proxy.blacklist.txt"
+    enabled: true
+    tier: stable
+    license: "GPL-3.0"
+    notes: "Trackers y analytics - formato domain-only."
+
+  # ============================================================================
+  # Listas específicas para publicidad móvil (Unity Ads, AdMob, AppLovin, etc.)
+  # ============================================================================
+  - id: mobile_ads_xorro
+    name: "Mobile Ads (x-o-r-r-o)"
+    category: advertising
+    url: "https://raw.githubusercontent.com/x-o-r-r-o/Pi-Hole-Block-Lists/master/mobile-ads.txt"
+    enabled: true
+    tier: stable
+    license: "MIT"
+    notes: "Anuncios móviles - Unity, AdMob, AppLovin, Vungle, IronSource. ~1000 dominios."
+
+  - id: ads_tracking_xorro
+    name: "Ads and Tracking (x-o-r-r-o)"
+    category: advertising
+    url: "https://raw.githubusercontent.com/x-o-r-r-o/Pi-Hole-Block-Lists/master/ads-and-tracking.txt"
+    enabled: true
+    tier: stable
+    license: "MIT"
+    notes: "Lista consolidada de ads y tracking."
+
+  - id: pyenb_blocklist
+    name: "Pyenb Comprehensive Blocklist"
+    category: advertising
+    url: "https://raw.githubusercontent.com/Pyenb/Pi-hole-blocklist/refs/heads/main/blocklist.txt"
+    enabled: true
+    tier: edge
+    license: "MIT"
+    notes: "Lista muy agresiva ~2.4M dominios. Puede generar falsos positivos."
+
+  - id: blocklistproject_ads
+    name: "BlocklistProject Ads"
+    category: advertising
+    url: "https://blocklistproject.github.io/Lists/ads.txt"
+    enabled: true
+    tier: stable
+    license: "MIT"
+    notes: "Lista de ads del BlocklistProject."
+
+  - id: perflyst_smarttv
+    name: "Perflyst Smart-TV Ads"
+    category: advertising
+    url: "https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/SmartTV.txt"
+    enabled: true
+    tier: stable
+    license: "MIT"
+    notes: "Bloquea anuncios en Smart TVs y dispositivos de streaming."
+
+  - id: perflyst_android
+    name: "Perflyst Android Tracking"
+    category: tracking
+    url: "https://raw.githubusercontent.com/Perflyst/PiHoleBlocklist/master/android-tracking.txt"
+    enabled: true
+    tier: stable
+    license: "MIT"
+    notes: "Tracking específico de Android."

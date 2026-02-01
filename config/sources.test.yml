@@ -1,0 +1,22 @@
+# Sources para testing local
+sources:
+  - id: test_ads
+    name: "Test Synthetic Ads"
+    url: "file://inputs/test_lists/ads_synthetic.txt"
+    category: advertising
+    enabled: true
+    tier: stable
+
+  - id: test_tracking
+    name: "Test Synthetic Tracking"
+    url: "file://inputs/test_lists/tracking_synthetic.txt"
+    category: tracking
+    enabled: true
+    tier: stable
+
+  - id: test_malicious
+    name: "Test Synthetic Malicious"
+    url: "file://inputs/test_lists/malicious_synthetic.txt"
+    category: malicious
+    enabled: true
+    tier: stable

@@ -1,0 +1,50 @@
+# Perfiles = composición de categorías y/o fuentes.
+# Cada perfil puede:
+#   - include_categories: lista de categorías a incluir (vacío = todas)
+#   - include_sources: lista de fuentes específicas a incluir (vacío = all enabled)
+#   - exclude_sources: lista de fuentes a excluir
+#   - strict: true si este perfil puede bloquear telemetry (false debe respetar core_domains)
+
+profiles:
+  base:
+    include_categories: ["advertising", "tracking", "malicious"]
+    include_sources: []
+    exclude_sources: []
+    strict: false
+
+  security:
+    include_categories: ["malicious"]
+    include_sources: []
+    exclude_sources: []
+    strict: false
+
+  aggressive:
+    include_categories: ["advertising", "tracking", "malicious", "telemetry"]
+    include_sources: []
+    exclude_sources: []
+    strict: true
+
+  # Perfiles por OS/dispositivo (ejemplos)
+  android:
+    include_categories: ["advertising", "tracking", "malicious"]
+    include_sources: []
+    exclude_sources: []
+    strict: false
+
+  ios:
+    include_categories: ["advertising", "tracking", "malicious"]
+    include_sources: []
+    exclude_sources: []
+    strict: false
+
+  windows:
+    include_categories: ["advertising", "tracking", "malicious", "telemetry"]
+    include_sources: []
+    exclude_sources: []
+    strict: false
+
+  macos:
+    include_categories: ["advertising", "tracking", "malicious"]
+    include_sources: []
+    exclude_sources: []
+    strict: false

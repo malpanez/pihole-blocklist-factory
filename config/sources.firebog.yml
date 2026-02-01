@@ -1,0 +1,178 @@
+# Auto-generated from https://v.firebog.net/hosts/csv.txt
+# DO NOT EDIT manually; regenerate with: blocklist-factory sync-firebog
+
+sources:
+  - id: firebog_advertising_1_adaway
+    name: "AdAway"
+    url: "https://adaway.org/hosts.txt"
+    category: advertising
+    enabled: true
+    notes: "Firebog advertising: https://adaway.org/"
+
+  - id: firebog_advertising_2_adguard_dns
+    name: "Adguard DNS"
+    url: "https://v.firebog.net/hosts/AdguardDNS.txt"
+    category: advertising
+    enabled: true
+    notes: "Firebog advertising: https://filters.adtidy.org/extension/chromium/filters/15.txt"
+
+  - id: firebog_advertising_3_laniksj's_admiral_anti_adblock
+    name: "LanikSJ's Admiral Anti-Adblock"
+    url: "https://v.firebog.net/hosts/Admiral.txt"
+    category: advertising
+    enabled: true
+    notes: "Firebog advertising: https://github.com/LanikSJ/ubo-filters"
+
+  - id: firebog_advertising_4_anudeep_nd's_blacklist
+    name: "Anudeep ND's Blacklist"
+    url: "https://raw.githubusercontent.com/anudeepND/blacklist/master/adservers.txt"
+    category: advertising
+    enabled: true
+    notes: "Firebog advertising: https://github.com/anudeepND/blacklist"
+
+  - id: firebog_advertising_5_easylist
+    name: "Easylist"
+    url: "https://v.firebog.net/hosts/Easylist.txt"
+    category: advertising
+    enabled: true
+    notes: "Firebog advertising: https://github.com/easylist/easylist"
+
+  - id: firebog_advertising_6_peter_lowe's_adservers
+    name: "Peter Lowe's Adservers"
+    url: "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=hosts&showintro=0&mimetype=plaintext"
+    category: advertising
+    enabled: true
+    notes: "Firebog advertising: https://pgl.yoyo.org/adservers/"
+
+  - id: firebog_advertising_7_fademind's_unchecky_ads
+    name: "Fademind's Unchecky Ads"
+    url: "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/UncheckyAds/hosts"
+    category: advertising
+    enabled: true
+    notes: "Firebog advertising: https://github.com/FadeMind/hosts.extras"
+
+  - id: firebog_advertising_8_hostsvn
+    name: "hostsVN"
+    url: "https://raw.githubusercontent.com/bigdargon/hostsVN/master/hosts"
+    category: advertising
+    enabled: true
+    notes: "Firebog advertising: https://github.com/bigdargon/hostsVN"
+
+  - id: firebog_malicious_1_dandelionsprout's_anti_malware
+    name: "DandelionSprout's Anti Malware Filter"
+    url: "https://raw.githubusercontent.com/DandelionSprout/adfilt/master/Alternate%20versions%20Anti-Malware%20List/AntiMalwareHosts.txt"
+    category: malicious
+    enabled: true
+    notes: "Firebog malicious: https://github.com/DandelionSprout/adfilt"
+
+  - id: firebog_malicious_2_fabrice_prigent's_cryptojackin
+    name: "Fabrice Prigent's Cryptojacking"
+    url: "https://v.firebog.net/hosts/Prigent-Crypto.txt"
+    category: malicious
+    enabled: true
+    notes: "Firebog malicious: https://dsi.ut-capitole.fr/blacklists/index_en.php"
+
+  - id: firebog_malicious_3_fademind's_risky_hosts
+    name: "Fademind's Risky Hosts"
+    url: "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Risk/hosts"
+    category: malicious
+    enabled: true
+    notes: "Firebog malicious: https://github.com/FadeMind/hosts.extras"
+
+  - id: firebog_malicious_4_phishing_army's_extended_block
+    name: "Phishing Army's Extended Blocklist"
+    url: "https://phishing.army/download/phishing_army_blocklist_extended.txt"
+    category: malicious
+    enabled: true
+    notes: "Firebog malicious: https://www.phishing.army/"
+
+  - id: firebog_malicious_5_quidsup_malicious
+    name: "Quidsup Malicious"
+    url: "https://gitlab.com/quidsup/notrack-blocklists/raw/master/notrack-malware.txt"
+    category: malicious
+    enabled: true
+    notes: "Firebog malicious: https://gitlab.com/quidsup/notrack-blocklists"
+
+  - id: firebog_malicious_6_spam404
+    name: "Spam404"
+    url: "https://raw.githubusercontent.com/Spam404/lists/master/main-blacklist.txt"
+    category: malicious
+    enabled: true
+    notes: "Firebog malicious: https://github.com/Spam404/lists"
+
+  - id: firebog_malicious_7_echap's_stalkerware_indicators
+    name: "Echap's Stalkerware Indicators"
+    url: "https://raw.githubusercontent.com/AssoEchap/stalkerware-indicators/master/generated/hosts"
+    category: malicious
+    enabled: true
+    notes: "Firebog malicious: https://github.com/AssoEchap/stalkerware-indicators"
+
+  - id: firebog_malicious_8_urlhaus_malicious_url_blocklis
+    name: "URLhaus Malicious URL blocklist"
+    url: "https://urlhaus.abuse.ch/downloads/hostfile/"
+    category: malicious
+    enabled: true
+    notes: "Firebog malicious: https://urlhaus.abuse.ch/api/"
+
+  - id: firebog_malicious_9_cyberhost.uk_malware_domains
+    name: "CyberHost.uk Malware Domains"
+    url: "https://lists.cyberhost.uk/malware.txt"
+    category: malicious
+    enabled: true
+    notes: "Firebog malicious: https://cyberhost.uk/malware-blocklist/"
+
+  - id: firebog_suspicious_1_polishfiltersteam_kadhosts
+    name: "PolishFiltersTeam KADhosts"
+    url: "https://raw.githubusercontent.com/PolishFiltersTeam/KADhosts/master/KADhosts.txt"
+    category: suspicious
+    enabled: true
+    notes: "Firebog suspicious: https://github.com/PolishFiltersTeam/KADhosts"
+
+  - id: firebog_suspicious_2_fademind's_spammers
+    name: "Fademind's Spammers"
+    url: "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Spam/hosts"
+    category: suspicious
+    enabled: true
+    notes: "Firebog suspicious: https://github.com/FadeMind/hosts.extras/"
+
+  - id: firebog_suspicious_3_wally3k's_blacklist
+    name: "WaLLy3K's Blacklist"
+    url: "https://v.firebog.net/hosts/static/w3kbl.txt"
+    category: suspicious
+    enabled: true
+    notes: "Firebog suspicious: https://v.firebog.net/hosts/static/w3kbl.txt"
+
+  - id: firebog_tracking_1_easyprivacy
+    name: "Easyprivacy"
+    url: "https://v.firebog.net/hosts/Easyprivacy.txt"
+    category: tracking
+    enabled: true
+    notes: "Firebog tracking: https://github.com/easylist/easylist"
+
+  - id: firebog_tracking_2_fabrice_prigent's_ads
+    name: "Fabrice Prigent's Ads"
+    url: "https://v.firebog.net/hosts/Prigent-Ads.txt"
+    category: tracking
+    enabled: true
+    notes: "Firebog tracking: https://dsi.ut-capitole.fr/blacklists/index_en.php"
+
+  - id: firebog_tracking_3_fademind's_2o7_network_tracker
+    name: "Fademind's 2o7 Network Trackers"
+    url: "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.2o7Net/hosts"
+    category: tracking
+    enabled: true
+    notes: "Firebog tracking: https://github.com/Fademind/hosts.extras"
+
+  - id: firebog_tracking_4_crazy_max's_microsoft_telemetr
+    name: "Crazy Max's Microsoft Telemetry"
+    url: "https://raw.githubusercontent.com/crazy-max/WindowsSpyBlocker/master/data/hosts/spy.txt"
+    category: tracking
+    enabled: true
+    notes: "Firebog tracking: https://github.com/crazy-max/WindowsSpyBlocker"
+
+  - id: firebog_tracking_5_geoffrey_frogeye's_first_party
+    name: "Geoffrey Frogeye's First-Party Trackers"
+    url: "https://hostfiles.frogeye.fr/firstparty-trackers-hosts.txt"
+    category: tracking
+    enabled: true
+    notes: "Firebog tracking: https://hostfiles.frogeye.fr/"

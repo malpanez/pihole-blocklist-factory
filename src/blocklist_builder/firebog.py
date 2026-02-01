@@ -1,0 +1,140 @@
+"""Firebog blocklist catalog sync and parsing."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+import requests
+
+from .types import Source
+
+
+@dataclass
+class FirebogEntry:
+    """Single entry from Firebog CSV (v.firebog.net/hosts/csv.txt).
+
+    CSV format (no headers): category,status,home,title,url
+    """
+
+    category: str
+    status: str  # "tick", "std", "cross"
+    home: str
+    title: str
+    url: str
+
+
+def fetch_firebog_csv() -> list[FirebogEntry]:
+    """Download Firebog CSV catalog from https://v.firebog.net/hosts/csv.txt.
+
+    Returns list of FirebogEntry objects (stable/ticked lists only).
+    CSV format: "category","status","home","title","url"
+    """
+    url = "https://v.firebog.net/hosts/csv.txt"
+    resp = requests.get(url, timeout=30)
+    resp.raise_for_status()
+
+    lines = resp.text.strip().split("\n")
+    entries = []
+
+    for line in lines:
+        if not line.strip():
+            continue
+        # Parse CSV: remove quotes and split
+        parts = [p.strip().strip('"') for p in line.split('","')]
+        if len(parts) < 5:
+            continue
+
+        category = parts[0]
+        status = parts[1]
+        home = parts[2]
+        title = parts[3]
+        url = parts[4]
+
+        # Only include "tick" (stable) entries
+        if status != "tick":
+            continue
+
+        try:
+            entry = FirebogEntry(
+                category=category.lower(),
+                status=status,
+                home=home,
+                title=title,
+                url=url,
+            )
+            entries.append(entry)
+        except Exception:
+            continue
+
+    return entries
+
+
+def sync_firebog(config_dir: Path, dry_run: bool = False) -> dict:
+    """Download Firebog catalog and generate config/sources.firebog.yml.
+
+    Merges with existing config/sources.yml if present.
+    Does NOT overwrite config/sources.local.yml.
+
+    Returns summary dict with counts and generated config.
+    """
+    print("Fetching Firebog catalog...")
+    entries = fetch_firebog_csv()
+    print(f"  Found {len(entries)} blocklists in Firebog")
+
+    # Group by category
+    by_category = {}
+    for entry in entries:
+        cat = entry.category or "uncategorized"
+        if cat not in by_category:
+            by_category[cat] = []
+        by_category[cat].append(entry)
+
+    # Convert to Source objects
+    sources = []
+    for cat, cat_entries in sorted(by_category.items()):
+        for i, entry in enumerate(cat_entries, start=1):
+            # Generate ID: category_number_slugified_title
+            slug = entry.title.lower().replace(" ", "_").replace("-", "_")[:30]
+            source_id = f"firebog_{cat}_{i}_{slug}"
+
+            src = Source(
+                id=source_id,
+                name=entry.title,
+                url=entry.url,
+                category=cat,  # type: ignore
+                enabled=True,
+                tier="stable",
+                license=None,
+                notes=f"Firebog {cat}: {entry.home}",
+            )
+            sources.append(src)
+
+    # Build YAML output
+    yaml_lines = ["# Auto-generated from https://v.firebog.net/hosts/csv.txt", "# DO NOT EDIT manually; regenerate with: blocklist-factory sync-firebog", ""]
+    yaml_lines.append("sources:")
+    for src in sources:
+        yaml_lines.append(f"  - id: {src.id}")
+        yaml_lines.append(f"    name: \"{src.name}\"")
+        yaml_lines.append(f"    url: \"{src.url}\"")
+        yaml_lines.append(f"    category: {src.category}")
+        yaml_lines.append(f"    enabled: {str(src.enabled).lower()}")
+        if src.notes:
+            yaml_lines.append(f"    notes: \"{src.notes}\"")
+        yaml_lines.append("")
+
+    yaml_content = "\n".join(yaml_lines)
+
+    output_file = config_dir / "sources.firebog.yml"
+    if not dry_run:
+        output_file.write_text(yaml_content, encoding="utf-8")
+        print(f"✓ Generated {output_file} with {len(sources)} sources")
+    else:
+        print(f"[DRY RUN] Would write {len(sources)} sources to {output_file}")
+
+    return {
+        "total_entries": len(entries),
+        "by_category": {cat: len(ents) for cat, ents in by_category.items()},
+        "sources_generated": len(sources),
+        "output_file": str(output_file),
+    }

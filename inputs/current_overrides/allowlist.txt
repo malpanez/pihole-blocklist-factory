@@ -1,0 +1,95 @@
+# Dominios que NUNCA deben bloquearse (uno por línea)
+# Estos dominios se excluyen de las blocklists generadas.
+
+# ============================================================================
+# Falsos positivos comunes reportados por la comunidad
+# ============================================================================
+
+# Captchas y verificación
+www.google.com
+www.recaptcha.net
+recaptcha.net
+challenges.cloudflare.com
+hcaptcha.com
+
+# Apple servicios esenciales
+itunes.apple.com
+apps.apple.com
+iosapps.itunes.apple.com
+osxapps.itunes.apple.com
+xp.apple.com
+gsp-ssl.ls.apple.com
+gsp-ssl.ls-apple.com.akadns.net
+init.itunes.apple.com
+init-cdn.itunes-apple.com.akadns.net
+
+# Microsoft servicios esenciales
+login.live.com
+outlook.live.com
+outlook.office365.com
+office.com
+office365.com
+microsoftonline.com
+
+# Google servicios esenciales
+clients1.google.com
+clients2.google.com
+clients3.google.com
+clients4.google.com
+clients5.google.com
+clients6.google.com
+googleapis.com
+gstatic.com
+googleusercontent.com
+
+# Amazon / AWS
+s3.amazonaws.com
+cloudfront.net
+elasticbeanstalk.com
+
+# Gaming (falsos positivos frecuentes)
+steamcommunity.com
+steampowered.com
+epicgames.com
+ea.com
+origin.com
+xboxlive.com
+playstation.net
+
+# Streaming
+netflix.com
+spotify.com
+hulu.com
+disneyplus.com
+primevideo.com
+
+# Comunicación
+discord.com
+discord.gg
+discordapp.com
+telegram.org
+whatsapp.com
+whatsapp.net
+signal.org
+
+# Redes sociales (APIs necesarias)
+api.twitter.com
+api.instagram.com
+graph.instagram.com
+
+# Desarrollo
+raw.githubusercontent.com
+gist.githubusercontent.com
+objects.githubusercontent.com
+codeload.github.com
+npm.pkg.github.com
+registry.npmjs.org
+pypi.org
+files.pythonhosted.org
+
+# Proveedores DNS (no bloquear)
+dns.google
+dns.cloudflare.com
+one.one.one.one
+dns.quad9.net
+doh.opendns.com

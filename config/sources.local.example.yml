@@ -1,0 +1,24 @@
+# sources.local.yml (rename from sources.local.example.yml to sources.local.yml)
+# This file is gitignored and used for private/experimental sources.
+# Copy this example and add your own sources.
+
+sources:
+  # Example: private internal list
+  # - id: my_custom_list
+  #   name: "My Internal Blocklist"
+  #   category: malicious
+  #   url: "file:///path/to/my/list.txt"
+  #   enabled: true
+  #   tier: stable
+  #   license: "internal"
+  #   notes: "Private list, not for distribution"
+
+  # Example: experimental edge source (not in stable releases)
+  # - id: edge_experimental
+  #   name: "Experimental Source"
+  #   category: tracking
+  #   url: "https://example.com/experimental/list.txt"
+  #   enabled: false
+  #   tier: edge
+  #   license: "MIT"
+  #   notes: "Currently testing, disabled by default"

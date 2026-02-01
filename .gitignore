@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+.uv/
+.python-version
+
+# Caches
+.cache/
+.pytest_cache/
+.coverage
+.claude/
+
+# Local overrides (optional & private)
+inputs/private_*
+config/sources.local.yml
+
+# Ruff
+.ruff_cache/
+
+# Build outputs (can be versioned for distribution)
+# Uncomment to ignore dist/:
+dist/

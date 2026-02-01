@@ -1,0 +1,4 @@
+# Synthetic malicious blocklist
+malware.example.com
+botnet.example.net
+phishing.example.org

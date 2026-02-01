@@ -1,0 +1,1 @@
+# Exporta tu baseline desde Pi-hole (tabla gravity) y pégalo aquí para comparar.
