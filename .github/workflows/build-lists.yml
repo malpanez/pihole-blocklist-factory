@@ -15,7 +15,7 @@ on:
     - cron: "0 3 1 * *"   # monthly
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -46,3 +46,18 @@ jobs:
           name: dist
           path: |
             dist/
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: lists-${{ github.run_id }}
+          name: "Blocklists ${{ github.run_id }}"
+          body: "Automated build from workflow run ${{ github.run_id }}"
+          files: |
+            dist/all.txt
+            dist/allowlist.txt
+            dist/regex.txt
+            dist/categories/*.txt
+            dist/profiles/*.txt
+            dist/reports/*.json
+            dist/reports/*.md
