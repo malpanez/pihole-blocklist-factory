@@ -10,7 +10,14 @@ from blocklist_builder.types import Profile, Provenance, Source
 
 def _settings_for(tmp_path: Path, sources: list[Source]) -> Settings:
     policies = Policies(
-        category_precedence=["advertising", "tracking", "malicious", "suspicious", "other", "telemetry"],
+        category_precedence=[
+            "advertising",
+            "tracking",
+            "malicious",
+            "suspicious",
+            "other",
+            "telemetry",
+        ],
         core_domains=set(),
         base_allowlist=set(),
         sensitive_domains=set(),
@@ -183,7 +190,9 @@ def test_write_provenance_error(tmp_path: Path, monkeypatch) -> None:
         raise OSError("boom")
 
     monkeypatch.setattr(Path, "write_text", boom)
-    prov = {"a.com": Provenance("a.com", frozenset({"s1"}), frozenset({"advertising"}), "advertising")}
+    prov = {
+        "a.com": Provenance("a.com", frozenset({"s1"}), frozenset({"advertising"}), "advertising")
+    }
     build_mod._write_provenance(tmp_path, prov)
 
 
@@ -203,7 +212,11 @@ def test_write_marginal_error(tmp_path: Path, monkeypatch) -> None:
         raise OSError("boom")
 
     monkeypatch.setattr(Path, "write_text", boom)
-    build_mod._write_marginal(tmp_path, {"a.com": {"s1"}}, {"s1": Source(id="s1", name="s1", category="advertising", url="x")})
+    build_mod._write_marginal(
+        tmp_path,
+        {"a.com": {"s1"}},
+        {"s1": Source(id="s1", name="s1", category="advertising", url="x")},
+    )
 
 
 def test_write_allowlist_empty(tmp_path: Path) -> None:

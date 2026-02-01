@@ -111,16 +111,20 @@ def sync_firebog(config_dir: Path, dry_run: bool = False) -> dict:
             sources.append(src)
 
     # Build YAML output
-    yaml_lines = ["# Auto-generated from https://v.firebog.net/hosts/csv.txt", "# DO NOT EDIT manually; regenerate with: blocklist-factory sync-firebog", ""]
+    yaml_lines = [
+        "# Auto-generated from https://v.firebog.net/hosts/csv.txt",
+        "# DO NOT EDIT manually; regenerate with: blocklist-factory sync-firebog",
+        "",
+    ]
     yaml_lines.append("sources:")
     for src in sources:
         yaml_lines.append(f"  - id: {src.id}")
-        yaml_lines.append(f"    name: \"{src.name}\"")
-        yaml_lines.append(f"    url: \"{src.url}\"")
+        yaml_lines.append(f'    name: "{src.name}"')
+        yaml_lines.append(f'    url: "{src.url}"')
         yaml_lines.append(f"    category: {src.category}")
         yaml_lines.append(f"    enabled: {str(src.enabled).lower()}")
         if src.notes:
-            yaml_lines.append(f"    notes: \"{src.notes}\"")
+            yaml_lines.append(f'    notes: "{src.notes}"')
         yaml_lines.append("")
 
     yaml_content = "\n".join(yaml_lines)

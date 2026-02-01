@@ -15,7 +15,14 @@ def _write(path: Path, content: str) -> None:
 
 def _settings_for(tmp_path: Path, sources: list[Source]) -> Settings:
     policies = Policies(
-        category_precedence=["advertising", "tracking", "malicious", "suspicious", "other", "telemetry"],
+        category_precedence=[
+            "advertising",
+            "tracking",
+            "malicious",
+            "suspicious",
+            "other",
+            "telemetry",
+        ],
         core_domains=set(),
         base_allowlist=set(),
         sensitive_domains=set(),

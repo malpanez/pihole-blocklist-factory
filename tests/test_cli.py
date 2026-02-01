@@ -424,9 +424,7 @@ def test_cli_main_returns_codes(monkeypatch) -> None:
     assert cli.main([]) == 1
 
 
-@pytest.mark.filterwarnings(
-    "ignore:.*blocklist_builder\\.cli.*prior to execution.*:RuntimeWarning"
-)
+@pytest.mark.filterwarnings("ignore:.*blocklist_builder\\.cli.*prior to execution.*:RuntimeWarning")
 def test_cli_run_as_main(monkeypatch) -> None:
     import runpy
     import sys

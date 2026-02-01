@@ -18,6 +18,6 @@ from blocklist_builder.cli import main  # noqa: E402
 if __name__ == "__main__":
     # Try with SSL verification disabled (temporary for testing)
     os.environ["PYTHONHTTPSVERIFY"] = "0"
-    
+
     # Run build
     sys.exit(main(["build"]))

@@ -89,7 +89,11 @@ def parse_lines(
         parts = line.split()
 
         # Try multiple formats using walrus operator
-        if (domain := _try_parse_hosts_format(parts)) or (domain := _try_parse_domain_only(parts)) or (domain := _try_parse_abp_simple(line)):
+        if (
+            (domain := _try_parse_hosts_format(parts))
+            or (domain := _try_parse_domain_only(parts))
+            or (domain := _try_parse_abp_simple(line))
+        ):
             yield ParsedLine(raw=raw, domain=domain, reason="ok")
         else:
             yield ParsedLine(raw=raw, domain=None, reason="unsupported")

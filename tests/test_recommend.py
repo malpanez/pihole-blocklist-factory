@@ -15,7 +15,14 @@ def _write(path: Path, content: str) -> None:
 
 def _settings() -> Settings:
     policies = Policies(
-        category_precedence=["advertising", "tracking", "malicious", "suspicious", "other", "telemetry"],
+        category_precedence=[
+            "advertising",
+            "tracking",
+            "malicious",
+            "suspicious",
+            "other",
+            "telemetry",
+        ],
         core_domains=set(),
         base_allowlist=set(),
         sensitive_domains=set(),
@@ -31,8 +38,16 @@ def _settings() -> Settings:
 def test_compute_recommendations_success(tmp_path: Path) -> None:
     dist_dir = tmp_path / "dist"
     provenance = {
-        "a.example": {"source_ids": ["s1"], "categories": ["advertising"], "assigned": "advertising"},
-        "b.example": {"source_ids": ["s1", "s2"], "categories": ["advertising", "tracking"], "assigned": "tracking"},
+        "a.example": {
+            "source_ids": ["s1"],
+            "categories": ["advertising"],
+            "assigned": "advertising",
+        },
+        "b.example": {
+            "source_ids": ["s1", "s2"],
+            "categories": ["advertising", "tracking"],
+            "assigned": "tracking",
+        },
         "c.example": {"source_ids": ["s2"], "categories": ["tracking"], "assigned": "tracking"},
     }
     marginal = {"s1": 1, "s2": 1}
@@ -42,7 +57,12 @@ def test_compute_recommendations_success(tmp_path: Path) -> None:
 
     result = compute_recommendations(dist_dir, _settings())
     assert result["total_domains"] == 3
-    assert result["high_value_sources"] + result["moderate_value_sources"] + result["low_value_sources"] == 2
+    assert (
+        result["high_value_sources"]
+        + result["moderate_value_sources"]
+        + result["low_value_sources"]
+        == 2
+    )
     assert (dist_dir / "reports" / "recommend.md").exists()
 
 
@@ -63,7 +83,11 @@ def test_compute_recommendations_invalid_provenance(tmp_path: Path) -> None:
 def test_compute_recommendations_no_marginal(tmp_path: Path) -> None:
     dist_dir = tmp_path / "dist"
     provenance = {
-        "a.example": {"source_ids": ["s1"], "categories": ["advertising"], "assigned": "advertising"},
+        "a.example": {
+            "source_ids": ["s1"],
+            "categories": ["advertising"],
+            "assigned": "advertising",
+        },
     }
     _write(dist_dir / "reports" / "provenance.json", json.dumps(provenance))
     result = compute_recommendations(dist_dir, _settings())

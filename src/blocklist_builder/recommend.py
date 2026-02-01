@@ -38,11 +38,17 @@ def _compute_source_metrics(
     for src_id in source_map:
         # Count domains this source contributes to
         total_contributions = sum(
-            1 for _domain, prov_data in provenance.items() if src_id in prov_data.get("source_ids", [])
+            1
+            for _domain, prov_data in provenance.items()
+            if src_id in prov_data.get("source_ids", [])
         )
 
         # Count unique (marginal) domains
-        unique_domains = sum(1 for _domain, prov_data in provenance.items() if prov_data.get("source_ids", []) == [src_id])
+        unique_domains = sum(
+            1
+            for _domain, prov_data in provenance.items()
+            if prov_data.get("source_ids", []) == [src_id]
+        )
 
         # Count domains shared with others
         shared_domains = total_contributions - unique_domains
@@ -114,7 +120,9 @@ def _write_recommend_report(
     md_lines.extend([f"### High-Value Sources ({len(high_value)} sources)", ""])
     for contrib in high_value[:20]:
         md_lines.append(f"- **{contrib['name']}** ({contrib['category']})")
-        md_lines.append(f"  - Unique domains: {contrib['unique']} ({contrib['unique_pct']:.2f}% of total)")
+        md_lines.append(
+            f"  - Unique domains: {contrib['unique']} ({contrib['unique_pct']:.2f}% of total)"
+        )
         md_lines.append(f"  - Total domains: {contrib['total']}")
         md_lines.append(f"  - Overlap: {contrib['overlap']:.1%}")
         md_lines.append("")
@@ -169,7 +177,9 @@ def _write_recommend_report(
     output_file.write_text("\n".join(md_lines), encoding="utf-8")
 
 
-def compute_recommendations(dist_dir: Path, settings: Settings, output_file: Path | None = None) -> dict:
+def compute_recommendations(
+    dist_dir: Path, settings: Settings, output_file: Path | None = None
+) -> dict:
     """Compute marginal contribution and overlap per source.
 
     Generates dist/reports/recommend.md with:
@@ -192,7 +202,9 @@ def compute_recommendations(dist_dir: Path, settings: Settings, output_file: Pat
     metrics = _compute_source_metrics(provenance, source_map, marginal_data)
 
     # Categorize contributions
-    high_value, moderate_value, low_value = _categorize_contributions(metrics, source_map, total_domains)
+    high_value, moderate_value, low_value = _categorize_contributions(
+        metrics, source_map, total_domains
+    )
 
     # Write report
     output_file = output_file or (dist_dir / "reports" / "recommend.md")

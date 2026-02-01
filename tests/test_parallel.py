@@ -21,9 +21,7 @@ def test_parallel_parse_and_sanitize_counts(monkeypatch) -> None:
 
     monkeypatch.setattr(parallel, "ProcessPoolExecutor", BoomExecutor)
 
-    valid, discarded, parsed_ok, sanitized_ok = parallel_parse_and_sanitize(
-        lines, drop_patterns=[]
-    )
+    valid, discarded, parsed_ok, sanitized_ok = parallel_parse_and_sanitize(lines, drop_patterns=[])
 
     assert parsed_ok == 4
     assert sanitized_ok == 2

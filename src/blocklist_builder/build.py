@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -65,7 +66,7 @@ def _load_drop_patterns(drop_file: Path) -> Sequence[re.Pattern[str]]:
 
 def _resolve_source_path(src, no_fetch: bool, cache_dir: Path) -> Path | None:
     """Resolve source path handling file://, relative, and HTTP URLs.
-    
+
     Returns None if source cannot be resolved.
     """
     match src.url:
@@ -100,7 +101,9 @@ def _process_parsed_lines(
         discarded[f"{_PARSE_PREFIX}ok"] += parsed_ok
         discarded[f"{_SANITIZE_PREFIX}ok"] += sanitized_ok
         source_stats[f"{_PARSE_PREFIX}ok"] = source_stats.get(f"{_PARSE_PREFIX}ok", 0) + parsed_ok
-        source_stats[f"{_SANITIZE_PREFIX}ok"] = source_stats.get(f"{_SANITIZE_PREFIX}ok", 0) + sanitized_ok
+        source_stats[f"{_SANITIZE_PREFIX}ok"] = (
+            source_stats.get(f"{_SANITIZE_PREFIX}ok", 0) + sanitized_ok
+        )
         for domain in valid_domains:
             yield (domain, src_category, src_id, _OK_REASON)
     else:
@@ -126,9 +129,7 @@ def _process_parsed_lines(
                 continue
 
             discarded[f"{_SANITIZE_PREFIX}ok"] += 1
-            source_stats[f"{_SANITIZE_PREFIX}ok"] = (
-                source_stats.get(f"{_SANITIZE_PREFIX}ok", 0) + 1
-            )
+            source_stats[f"{_SANITIZE_PREFIX}ok"] = source_stats.get(f"{_SANITIZE_PREFIX}ok", 0) + 1
             yield (san.domain, src_category, src_id, _OK_REASON)
 
 
@@ -156,9 +157,7 @@ def _process_source(
     lines = src_path.read_text(encoding=_ENCODING, errors="ignore").splitlines()
     use_parallel = len(lines) > _PARALLEL_THRESHOLD
     if debug_log is not None:
-        debug_log.append(
-            f"{src.id}: lines={len(lines)} parallel={'yes' if use_parallel else 'no'}"
-        )
+        debug_log.append(f"{src.id}: lines={len(lines)} parallel={'yes' if use_parallel else 'no'}")
     stats = source_stats.setdefault(src.id, {})
     stats["lines"] = stats.get("lines", 0) + len(lines)
 
@@ -210,7 +209,7 @@ def _collect_domains(
     debug_log: list[str] | None = None,
 ) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
     """Collect and validate domains from all sources.
-    
+
     Returns:
         (domain_to_categories, domain_to_sources)
     """
@@ -273,10 +272,8 @@ def _write_source_stats(dist_dir: Path, source_stats: dict[str, dict[str, int]])
     if not source_stats:
         return
     out = dist_dir / "reports" / "source_stats.json"
-    try:
+    with contextlib.suppress(Exception):
         out.write_text(json.dumps(source_stats, indent=2), encoding=_ENCODING)
-    except Exception:
-        pass
 
 
 def _write_marginal(
@@ -300,7 +297,9 @@ def _write_marginal(
             src = source_map.get(sid)
             name = src.name if src else sid
             md.append(f"- {sid} ({name}): {cnt} dominios únicos netos")
-        (dist_dir / "reports" / _MARGINAL_MD_FILE).write_text("\n".join(md) + "\n", encoding=_ENCODING)
+        (dist_dir / "reports" / _MARGINAL_MD_FILE).write_text(
+            "\n".join(md) + "\n", encoding=_ENCODING
+        )
     except Exception:
         pass
 
@@ -359,7 +358,9 @@ def build(
 
     # Build provenance and write metadata
     source_map = {s.id: s for s in settings.sources}
-    provenance = build_provenance(domain_to_sources, source_map, settings.policies.category_precedence)
+    provenance = build_provenance(
+        domain_to_sources, source_map, settings.policies.category_precedence
+    )
     _write_provenance(dist_dir, provenance)
     _write_source_stats(dist_dir, source_stats)
 

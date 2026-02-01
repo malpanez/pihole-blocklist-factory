@@ -46,7 +46,8 @@ def collapse_subdomains(domains: set[str]) -> tuple[set[str], int]:
 
     # Identificar padres que tienen suficientes subdominios para colapsar
     collapsible_parents = {
-        parent for parent, count in parent_subdomain_count.items()
+        parent
+        for parent, count in parent_subdomain_count.items()
         if count >= _MIN_SUBDOMAINS_TO_COLLAPSE
     }
 

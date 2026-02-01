@@ -52,7 +52,7 @@ def _read_yaml(path: Path) -> dict[str, Any]:
 
 def load_settings(config_dir: Path) -> Settings:
     """Load config from sources.yml, sources.firebog.yml, sources.local.yml, policies.yml, profiles.yml.
-    
+
     Environment variable BLOCKLIST_SOURCES can override which sources to load:
     - sources (default): sources.yml + sources.firebog.yml + sources.local.yml
     - test: sources.test.yml (for local testing)
@@ -69,7 +69,7 @@ def load_settings(config_dir: Path) -> Settings:
             sources_yml = _read_yaml(config_dir / "sources.yml")
             sources_firebog_yml = _read_yaml(config_dir / "sources.firebog.yml")
             sources_local_yml = _read_yaml(config_dir / "sources.local.yml")
-    
+
     policies_yml = _read_yaml(config_dir / "policies.yml")
     profiles_yml = _read_yaml(config_dir / "profiles.yml")
 

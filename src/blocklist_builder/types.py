@@ -23,6 +23,7 @@ class Source:
 @dataclass(frozen=True, slots=True)
 class SourceMetadata:
     """Metadata tracked for each source after fetch/parse."""
+
     source_id: str
     hash: str  # SHA256 of content
     size_bytes: int
@@ -37,6 +38,7 @@ class SourceMetadata:
 @dataclass(frozen=True, slots=True)
 class Provenance:
     """Domain's provenance: set of source_ids where it appears."""
+
     domain: str
     source_ids: frozenset[str]
     categories: frozenset[Category]  # categories from those sources

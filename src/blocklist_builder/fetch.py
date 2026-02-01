@@ -70,7 +70,7 @@ def _fetch_http(
         except requests.RequestException:
             if attempt == _RETRY_ATTEMPTS - 1:
                 raise
-            time.sleep(2 ** attempt)  # exponential backoff
+            time.sleep(2**attempt)  # exponential backoff
     return ""  # pragma: no cover
 
 

@@ -48,14 +48,11 @@ def _process_chunk_local(
 
 
 def _process_chunk_worker(
-    args: tuple[list[str], list[str]]
+    args: tuple[list[str], list[str]],
 ) -> tuple[list[str], dict[str, int], int, int]:
     """Worker-safe chunk processor (picklable)."""
     chunk_lines, drop_pattern_texts = args
-    if drop_pattern_texts:
-        patterns = [re.compile(p) for p in drop_pattern_texts]
-    else:
-        patterns = []
+    patterns = [re.compile(p) for p in drop_pattern_texts] if drop_pattern_texts else []
     return _process_chunk_local(chunk_lines, patterns)
 
 

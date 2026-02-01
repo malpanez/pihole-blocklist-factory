@@ -26,7 +26,9 @@ def test_fetch_to_cache_http_retries(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(fetch.time, "sleep", lambda _t: None)
 
     cache_dir = tmp_path / "cache"
-    cache_path, metadata = fetch.fetch_to_cache("http://example.com/list.txt", cache_dir, source_id="s1")
+    cache_path, metadata = fetch.fetch_to_cache(
+        "http://example.com/list.txt", cache_dir, source_id="s1"
+    )
     assert cache_path.exists()
     assert metadata.line_count == 2
 
@@ -41,9 +43,8 @@ def test_fetch_http_raises_after_retries(monkeypatch) -> None:
     try:
         fetch._fetch_http("http://example.com/fail.txt", timeout_s=1)
     except fetch.requests.RequestException:
-        assert True
-    else:
-        assert False
+        return
+    raise AssertionError("Expected RequestException")
 
 
 def test_load_metadata_missing_and_invalid(tmp_path: Path) -> None:

@@ -15,7 +15,14 @@ def _write(path: Path, content: str) -> None:
 
 def _settings() -> Settings:
     policies = Policies(
-        category_precedence=["advertising", "tracking", "malicious", "suspicious", "other", "telemetry"],
+        category_precedence=[
+            "advertising",
+            "tracking",
+            "malicious",
+            "suspicious",
+            "other",
+            "telemetry",
+        ],
         core_domains=set(),
         base_allowlist=set(),
         sensitive_domains=set(),
@@ -31,9 +38,21 @@ def _settings() -> Settings:
 def test_analyze_build_reports(tmp_path: Path) -> None:
     dist_dir = tmp_path / "dist"
     provenance = {
-        "a.example": {"source_ids": ["s1"], "categories": ["advertising"], "assigned": "advertising"},
-        "b.example": {"source_ids": ["s1", "s2"], "categories": ["advertising", "tracking"], "assigned": "tracking"},
-        "c.example": {"source_ids": ["s1", "s2", "s3"], "categories": ["advertising"], "assigned": "advertising"},
+        "a.example": {
+            "source_ids": ["s1"],
+            "categories": ["advertising"],
+            "assigned": "advertising",
+        },
+        "b.example": {
+            "source_ids": ["s1", "s2"],
+            "categories": ["advertising", "tracking"],
+            "assigned": "tracking",
+        },
+        "c.example": {
+            "source_ids": ["s1", "s2", "s3"],
+            "categories": ["advertising"],
+            "assigned": "advertising",
+        },
     }
     stats = {"total_lines": 10, "parsed_ok": 8, "sanitized_ok": 7}
 
@@ -94,5 +113,7 @@ def test_compute_discard_findings_triggers(monkeypatch) -> None:
     monkeypatch.setattr(analyze_mod, "defaultdict", lambda factory: FakeDefaultDict())
     provenance = {"a.com": {"source_ids": ["s1"]}}
     source_map = {"s1": type("S", (), {"name": "S1"})()}
-    findings = analyze_mod._compute_discard_findings(provenance, source_map, high_discard_threshold=0.5)
+    findings = analyze_mod._compute_discard_findings(
+        provenance, source_map, high_discard_threshold=0.5
+    )
     assert findings
