@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/malpanez/pihole-blocklist-factory/actions/workflows/ci.yml/badge.svg)](https://github.com/malpanez/pihole-blocklist-factory/actions/workflows/ci.yml)
 [![Build Lists](https://github.com/malpanez/pihole-blocklist-factory/actions/workflows/build-lists.yml/badge.svg)](https://github.com/malpanez/pihole-blocklist-factory/actions/workflows/build-lists.yml)
-[![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](https://github.com/malpanez/pihole-blocklist-factory)
+[![Codecov](https://codecov.io/gh/malpanez/pihole-blocklist-factory/branch/main/graph/badge.svg)](https://codecov.io/gh/malpanez/pihole-blocklist-factory)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://github.com/malpanez/pihole-blocklist-factory)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/malpanez/pihole-blocklist-factory)
 
@@ -205,22 +205,10 @@ graph TD
     D --> G["- marginal (contribución por fuente)"]
     C -->|No| H["✓ Sin cambios"]
 
-## Cobertura dinámica (opcional)
-
-Si quieres un badge dinámico con cobertura real:
+## Cobertura dinámica (Codecov)
 
 1. Crear cuenta en Codecov y activar el repo.
 2. Añadir el token `CODECOV_TOKEN` en GitHub → Settings → Secrets and variables → Actions.
-3. Añadir un paso de upload en `.github/workflows/ci.yml`:
-
-```yaml
-- name: Upload coverage to Codecov
-  uses: codecov/codecov-action@v5
-  with:
-    token: ${{ secrets.CODECOV_TOKEN }}
-```
-
-4. Reemplazar el badge estático por el de Codecov.
 ```
 
 ## Consumir blocklists

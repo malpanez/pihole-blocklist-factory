@@ -1,0 +1,18 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "UTC",
+  "labels": ["dependencies"],
+  "dependencyDashboard": true,
+  "schedule": ["before 6am on monday"],
+  "packageRules": [
+    {
+      "groupName": "python",
+      "matchManagers": ["pep621", "poetry", "pip_requirements", "pipenv", "setuptools"]
+    },
+    {
+      "groupName": "github-actions",
+      "matchManagers": ["github-actions"]
+    }
+  ]
+}
