@@ -11,12 +11,11 @@ from pathlib import Path
 from typing import Final
 
 from .classify import build_provenance, partition_by_precedence
-from .collapse import collapse_subdomains
-from .regex import generate_regex_patterns, write_regex_file
 from .config import Settings
 from .fetch import fetch_to_cache
 from .parallel import parallel_fetch_sources, parallel_parse_and_sanitize
 from .parse import parse_lines
+from .regex import generate_regex_patterns, write_regex_file
 from .report import Stats, write_reports
 from .sanitize import sanitize_domain
 
