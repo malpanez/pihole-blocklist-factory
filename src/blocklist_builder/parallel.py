@@ -9,9 +9,10 @@ Optimizations:
 
 from __future__ import annotations
 
+import logging
 import os
 import re
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from multiprocessing import cpu_count
 from pathlib import Path
@@ -61,8 +62,21 @@ def get_optimal_workers() -> int:
     # Allow override via BLOCKLIST_WORKERS env var
     if workers := os.environ.get("BLOCKLIST_WORKERS"):
         return max(1, int(workers))
-    # Default: use 75% of CPUs for I/O tasks
-    return max(1, cpu_count() // 4 * 3)
+    # Default: use 75% of CPUs
+    return max(1, cpu_count() * 3 // 4)
+
+
+def _resolve_local_sources(sources: list[Source]) -> dict[str, Path]:
+    """Resolve local source paths for no-fetch mode."""
+    result = {}
+    for src in sources:
+        if not src.enabled:
+            continue
+        url = src.url
+        src_path = Path(url.removeprefix("file://")) if url.startswith("file://") else Path(url)
+        if src_path.exists():
+            result[src.id] = src_path
+    return result
 
 
 def parallel_fetch_sources(
@@ -83,44 +97,42 @@ def parallel_fetch_sources(
         Dict mapping source_id -> cache_file_path.
     """
     if no_fetch:
-        # Skip network in no_fetch mode
-        result = {}
-        for src in sources:
-            if not src.enabled:
-                continue
-            url = src.url
-            src_path = Path(url.removeprefix("file://")) if url.startswith("file://") else Path(url)
-            if src_path.exists():
-                result[src.id] = src_path
-        return result
+        return _resolve_local_sources(sources)
 
-    result = {}
-    workers = min(get_optimal_workers(), len(sources))
+    enabled = [s for s in sources if s.enabled]
+    workers = min(get_optimal_workers(), len(enabled)) if enabled else 1
+    result: dict[str, Path] = {}
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
-        futures = {}
-        for src in sources:
-            if not src.enabled:
-                continue
-            future = executor.submit(
-                fetch_to_cache,
-                src.url,
-                cache_dir,
-                source_id=src.id,
-                timeout_s=timeout_s,
-            )
-            futures[future] = src.id
-
+        futures = {
+            executor.submit(
+                fetch_to_cache, src.url, cache_dir, source_id=src.id, timeout_s=timeout_s
+            ): src.id
+            for src in enabled
+        }
         for future in as_completed(futures):
             src_id = futures[future]
             try:
                 cache_path, _ = future.result()
                 result[src_id] = cache_path
             except Exception:
-                # Fetch failed; mark for skip
+                logging.warning("Failed to fetch source %s", src_id, exc_info=True)
                 result[src_id] = None
 
     return result
+
+
+def _merge_chunk_result(
+    result: tuple[list[str], dict[str, int], int, int],
+    valid_all: list[str],
+    discarded_all: dict[str, int],
+) -> tuple[int, int]:
+    """Merge a chunk result into accumulators. Returns (parsed_ok, sanitized_ok)."""
+    valid, discarded, parsed_ok, sanitized_ok = result
+    valid_all.extend(valid)
+    for k, v in discarded.items():
+        discarded_all[k] = discarded_all.get(k, 0) + v
+    return parsed_ok, sanitized_ok
 
 
 def parallel_parse_and_sanitize(
@@ -134,24 +146,21 @@ def parallel_parse_and_sanitize(
         drop_patterns: Regex patterns to drop.
 
     Returns:
-        (valid_domains, discard_reasons)
+        (valid_domains, discard_reasons, parsed_ok, sanitized_ok)
     """
-    # For smaller workloads, sequential is faster due to overhead
     if len(lines) < 1000:
-        valid, discarded, parsed_ok, sanitized_ok = _process_chunk_local(lines, drop_patterns)
-        return valid, discarded, parsed_ok, sanitized_ok
+        return _process_chunk_local(lines, drop_patterns)
 
-    # For large workloads, use ProcessPoolExecutor for CPU-bound sanitization
-    # Split into chunks
     workers = get_optimal_workers()
     chunk_size = max(100, len(lines) // workers)
     chunks = [lines[i : i + chunk_size] for i in range(0, len(lines), chunk_size)]
 
-    valid_all = []
+    valid_all: list[str] = []
     discarded_all: dict[str, int] = {}
     parsed_ok_total = 0
     sanitized_ok_total = 0
     drop_pattern_texts = [p.pattern for p in drop_patterns]
+
     try:
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = {
@@ -161,22 +170,17 @@ def parallel_parse_and_sanitize(
             for future in as_completed(futures):
                 idx = futures[future]
                 try:
-                    valid, discarded, parsed_ok, sanitized_ok = future.result()
-                    valid_all.extend(valid)
-                    parsed_ok_total += parsed_ok
-                    sanitized_ok_total += sanitized_ok
-                    for k, v in discarded.items():
-                        discarded_all[k] = discarded_all.get(k, 0) + v
+                    chunk_result = future.result()
                 except Exception:
-                    valid, discarded, parsed_ok, sanitized_ok = _process_chunk_local(
-                        chunks[idx], drop_patterns
+                    logging.warning(
+                        "Chunk %d failed in worker, falling back to local", idx, exc_info=True
                     )
-                    valid_all.extend(valid)
-                    parsed_ok_total += parsed_ok
-                    sanitized_ok_total += sanitized_ok
-                    for k, v in discarded.items():
-                        discarded_all[k] = discarded_all.get(k, 0) + v
+                    chunk_result = _process_chunk_local(chunks[idx], drop_patterns)
+                p, s = _merge_chunk_result(chunk_result, valid_all, discarded_all)
+                parsed_ok_total += p
+                sanitized_ok_total += s
     except Exception:
+        logging.warning("ProcessPoolExecutor failed, falling back to sequential", exc_info=True)
         valid_all, discarded_all, parsed_ok_total, sanitized_ok_total = _process_chunk_local(
             lines, drop_patterns
         )
@@ -184,20 +188,125 @@ def parallel_parse_and_sanitize(
     return valid_all, discarded_all, parsed_ok_total, sanitized_ok_total
 
 
+def _process_source_file_worker(
+    args: tuple[str, list[str], frozenset[str]],
+) -> tuple[list[str], dict[str, int]]:
+    """Process one source file in a worker process.
+
+    Reads the file, parses lines, sanitizes domains, and filters allowlisted entries.
+
+    Args:
+        args: (file_path_str, drop_pattern_texts, allow_frozenset)
+
+    Returns:
+        (valid_domains, stats_dict)
+    """
+    file_path_str, drop_pattern_texts, allow = args
+    patterns = [re.compile(p) for p in drop_pattern_texts] if drop_pattern_texts else []
+    lines = Path(file_path_str).read_text(encoding="utf-8", errors="ignore").splitlines()
+    valid, discarded, parsed_ok, sanitized_ok = _process_chunk_local(lines, patterns)
+
+    # Filter allowlisted domains
+    allowlisted = 0
+    if allow:
+        filtered = []
+        for d in valid:
+            if d in allow:
+                allowlisted += 1
+            else:
+                filtered.append(d)
+        valid = filtered
+
+    stats = dict(discarded)
+    stats["lines"] = len(lines)
+    stats["parse_ok"] = parsed_ok
+    stats["sanitize_ok"] = sanitized_ok
+    stats["allowlisted"] = allowlisted
+    return valid, stats
+
+
+def parallel_process_all_sources(
+    source_files: dict[str, Path],
+    drop_patterns: Sequence[re.Pattern[str]],
+    allow: frozenset[str],
+) -> dict[str, tuple[list[str], dict[str, int]]]:
+    """Process all source files in parallel, one worker per source.
+
+    Each worker independently reads, parses, sanitizes, and filters a source file.
+    This provides source-level parallelism instead of only chunk-level parallelism
+    within a single source.
+
+    Args:
+        source_files: Dict of source_id -> resolved file path.
+        drop_patterns: Compiled regex patterns for dropping lines.
+        allow: Frozenset of allowlisted domains to exclude.
+
+    Returns:
+        Dict of source_id -> (valid_domains, stats_dict).
+    """
+    if not source_files:
+        return {}
+
+    drop_pattern_texts = [p.pattern for p in drop_patterns]
+    results: dict[str, tuple[list[str], dict[str, int]]] = {}
+
+    # For few sources, skip process pool overhead
+    if len(source_files) <= 2:
+        for src_id, file_path in source_files.items():
+            results[src_id] = _process_source_file_worker(
+                (str(file_path), drop_pattern_texts, allow)
+            )
+        return results
+
+    workers = min(get_optimal_workers(), len(source_files))
+    try:
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            futures = {
+                executor.submit(
+                    _process_source_file_worker,
+                    (str(file_path), drop_pattern_texts, allow),
+                ): src_id
+                for src_id, file_path in source_files.items()
+            }
+            for future in as_completed(futures):
+                src_id = futures[future]
+                try:
+                    results[src_id] = future.result()
+                except Exception:
+                    logging.warning(
+                        "Worker failed for source %s, processing locally",
+                        src_id,
+                        exc_info=True,
+                    )
+                    results[src_id] = _process_source_file_worker(
+                        (str(source_files[src_id]), drop_pattern_texts, allow)
+                    )
+    except Exception:
+        logging.warning(
+            "ProcessPoolExecutor failed, falling back to sequential",
+            exc_info=True,
+        )
+        for src_id, file_path in source_files.items():
+            if src_id not in results:
+                results[src_id] = _process_source_file_worker(
+                    (str(file_path), drop_pattern_texts, allow)
+                )
+
+    return results
+
+
 def streaming_deduplicate(
     domain_iterables: Iterator[str],
 ) -> Iterator[str]:
-    """Stream unique domains without loading all in memory.
-
-    Uses a set that's written to disk periodically to avoid OOM on very large lists.
+    """Stream unique domains using an in-memory set.
 
     Args:
         domain_iterables: Iterator of domains.
 
     Yields:
-        Unique domains.
+        Unique domains (lowercased, stripped).
     """
-    seen = set()
+    seen: set[str] = set()
     for domain in domain_iterables:
         d = domain.strip().lower()
         if d and d not in seen:

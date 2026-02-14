@@ -88,51 +88,32 @@ def test_resolve_source_path_fetch(monkeypatch, tmp_path: Path) -> None:
     assert out == cache_file
 
 
-def test_process_parsed_lines_parallel(monkeypatch) -> None:
-    def fake_parallel(lines, drop_patterns=None):
-        return ["a.com"], {"parse_comment": 1}, 2, 1
-
-    monkeypatch.setattr(build_mod, "parallel_parse_and_sanitize", fake_parallel)
+def test_resolve_all_source_paths_skips_disabled(tmp_path: Path) -> None:
+    source = tmp_path / "s1.txt"
+    source.write_text("example.com\n", encoding="utf-8")
+    enabled = Source(id="s1", name="s1", category="advertising", url=str(source))
+    disabled = Source(id="s2", name="s2", category="advertising", url="x", enabled=False)
+    settings = _settings_for(tmp_path, [enabled, disabled])
     discarded = Counter()
-    source_stats: dict[str, int] = {}
-
-    out = list(
-        build_mod._process_parsed_lines(
-            "s1",
-            ["# comment", "a.com"],
-            drop_patterns=[],
-            use_parallel=True,
-            src_category="advertising",
-            discarded=discarded,
-            source_stats=source_stats,
-        )
+    source_stats: dict[str, dict[str, int]] = {}
+    result = build_mod._resolve_all_source_paths(
+        settings, no_fetch=True, cache_dir=tmp_path, discarded=discarded, source_stats=source_stats
     )
-    assert out == [("a.com", "advertising", "s1", "ok")]
-    assert discarded["parse_comment"] == 1
-    assert discarded["parse_ok"] == 2
-    assert discarded["sanitize_ok"] == 1
-    assert source_stats["parse_comment"] == 1
+    assert "s1" in result
+    assert "s2" not in result
 
 
-def test_process_source_disabled(tmp_path: Path) -> None:
-    class S:
-        def __init__(self) -> None:
-            self.enabled = False
-            self.url = "x"
-            self.id = "s1"
-            self.category = "advertising"
-
-    out = list(
-        build_mod._process_source(
-            S(),
-            no_fetch=True,
-            cache_dir=tmp_path,
-            drop_patterns=[],
-            discarded=Counter(),
-            source_stats={},
-        )
+def test_resolve_all_source_paths_missing_source(tmp_path: Path) -> None:
+    missing = Source(id="s1", name="s1", category="advertising", url=str(tmp_path / "nope.txt"))
+    settings = _settings_for(tmp_path, [missing])
+    discarded = Counter()
+    source_stats: dict[str, dict[str, int]] = {}
+    result = build_mod._resolve_all_source_paths(
+        settings, no_fetch=True, cache_dir=tmp_path, discarded=discarded, source_stats=source_stats
     )
-    assert out == []
+    assert "s1" not in result
+    assert discarded["source_missing"] == 1
+    assert source_stats["s1"]["source_missing"] == 1
 
 
 def test_write_profiles_include_categories(tmp_path: Path) -> None:

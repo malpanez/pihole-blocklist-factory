@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from click.testing import CliRunner
 import pytest
+from click.testing import CliRunner
 
 import blocklist_builder.cli as cli
 from blocklist_builder.report import Stats

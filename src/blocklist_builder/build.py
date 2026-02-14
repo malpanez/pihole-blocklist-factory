@@ -1,37 +1,31 @@
 from __future__ import annotations
 
-import contextlib
 import json
+import logging
 import os
 import re
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 from functools import cache
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 from .classify import build_provenance, partition_by_precedence
 from .config import Settings
 from .fetch import fetch_to_cache
-from .parallel import parallel_fetch_sources, parallel_parse_and_sanitize
-from .parse import parse_lines
+from .parallel import parallel_fetch_sources, parallel_process_all_sources
 from .regex import generate_regex_patterns, write_regex_file
 from .report import Stats, write_reports
 from .sanitize import sanitize_domain
 
 # Configuration constants
-_PARALLEL_THRESHOLD: Final = 100000  # Lines threshold for parallelization
 _ENCODING: Final = "utf-8"
 _PARSE_PREFIX: Final = "parse_"
 _SANITIZE_PREFIX: Final = "sanitize_"
 _SOURCE_MISSING_REASON: Final = "source_missing"
-_OK_REASON: Final = "ok"
-_ALLOWLIST_REASON: Final = "allowlisted"
-_PARSE_OK_REASON: Final = "parse_ok"
 _MARGINAL_JSON_FILE: Final = "marginal.json"
 _MARGINAL_MD_FILE: Final = "marginal.md"
 _MARGINAL_HEADER: Final = "# Marginal contribution por fuente"
-_COLLAPSED_REASON: Final = "collapsed_subdomain"
 
 
 @cache
@@ -70,7 +64,11 @@ def _resolve_source_path(src, no_fetch: bool, cache_dir: Path) -> Path | None:
     """
     match src.url:
         case url if url.startswith("file://"):
-            return Path(url.removeprefix("file://"))
+            file_path = Path(url.removeprefix("file://")).resolve()
+            if ".." in file_path.parts:
+                logging.warning("Rejected file:// URL with path traversal: %s", url)
+                return None
+            return file_path
         case url if not no_fetch:
             src_path, _ = fetch_to_cache(url, cache_dir, source_id=src.id)
             return src_path
@@ -79,97 +77,30 @@ def _resolve_source_path(src, no_fetch: bool, cache_dir: Path) -> Path | None:
             return p if p.exists() else None
 
 
-def _process_parsed_lines(
-    src_id: str,
-    lines: list[str],
-    drop_patterns: Sequence[re.Pattern[str]],
-    use_parallel: bool,
-    src_category: str,
-    discarded: Counter,
-    source_stats: dict[str, int],
-    debug_log: list[str] | None = None,
-):
-    """Parse and sanitize lines, yielding (domain, category, source_id, reason) tuples."""
-    if use_parallel:
-        valid_domains, discarded_local, parsed_ok, sanitized_ok = parallel_parse_and_sanitize(
-            lines, drop_patterns=drop_patterns
-        )
-        for k, v in discarded_local.items():
-            discarded[k] += v
-            source_stats[k] = source_stats.get(k, 0) + v
-        discarded[f"{_PARSE_PREFIX}ok"] += parsed_ok
-        discarded[f"{_SANITIZE_PREFIX}ok"] += sanitized_ok
-        source_stats[f"{_PARSE_PREFIX}ok"] = source_stats.get(f"{_PARSE_PREFIX}ok", 0) + parsed_ok
-        source_stats[f"{_SANITIZE_PREFIX}ok"] = (
-            source_stats.get(f"{_SANITIZE_PREFIX}ok", 0) + sanitized_ok
-        )
-        for domain in valid_domains:
-            yield (domain, src_category, src_id, _OK_REASON)
-    else:
-        # Sequential for small sources
-        for pl in parse_lines(lines, drop_patterns=drop_patterns):
-            if pl.reason != _OK_REASON or not pl.domain:
-                discarded[f"{_PARSE_PREFIX}{pl.reason}"] += 1
-                source_stats[f"{_PARSE_PREFIX}{pl.reason}"] = (
-                    source_stats.get(f"{_PARSE_PREFIX}{pl.reason}", 0) + 1
-                )
-                yield (None, None, src_id, f"{_PARSE_PREFIX}{pl.reason}")
-                continue
-
-            discarded[f"{_PARSE_PREFIX}ok"] += 1
-            source_stats[f"{_PARSE_PREFIX}ok"] = source_stats.get(f"{_PARSE_PREFIX}ok", 0) + 1
-            san = sanitize_domain(pl.domain)
-            if san.reason != _OK_REASON or not san.domain:
-                discarded[f"{_SANITIZE_PREFIX}{san.reason}"] += 1
-                source_stats[f"{_SANITIZE_PREFIX}{san.reason}"] = (
-                    source_stats.get(f"{_SANITIZE_PREFIX}{san.reason}", 0) + 1
-                )
-                yield (None, None, src_id, f"{_SANITIZE_PREFIX}{san.reason}")
-                continue
-
-            discarded[f"{_SANITIZE_PREFIX}ok"] += 1
-            source_stats[f"{_SANITIZE_PREFIX}ok"] = source_stats.get(f"{_SANITIZE_PREFIX}ok", 0) + 1
-            yield (san.domain, src_category, src_id, _OK_REASON)
-
-
-def _process_source(
-    src,
+def _resolve_all_source_paths(
+    settings: Settings,
     no_fetch: bool,
     cache_dir: Path,
-    drop_patterns: Sequence[re.Pattern[str]],
     discarded: Counter,
     source_stats: dict[str, dict[str, int]],
-    debug_log: list[str] | None = None,
-):
-    """Process a single source and yield (domain, category, source_id, reason) tuples."""
-    if not src.enabled:
-        return
+) -> dict[str, Path]:
+    """Resolve file paths for all enabled sources.
 
-    src_path = _resolve_source_path(src, no_fetch, cache_dir)
-    if not src_path:
-        discarded[_SOURCE_MISSING_REASON] += 1
-        stats = source_stats.setdefault(src.id, {})
-        stats[_SOURCE_MISSING_REASON] = stats.get(_SOURCE_MISSING_REASON, 0) + 1
-        yield (None, None, src.id, _SOURCE_MISSING_REASON)
-        return
-
-    lines = src_path.read_text(encoding=_ENCODING, errors="ignore").splitlines()
-    use_parallel = len(lines) > _PARALLEL_THRESHOLD
-    if debug_log is not None:
-        debug_log.append(f"{src.id}: lines={len(lines)} parallel={'yes' if use_parallel else 'no'}")
-    stats = source_stats.setdefault(src.id, {})
-    stats["lines"] = stats.get("lines", 0) + len(lines)
-
-    yield from _process_parsed_lines(
-        src.id,
-        lines,
-        drop_patterns,
-        use_parallel,
-        src.category,
-        discarded,
-        source_stats=stats,
-        debug_log=debug_log,
-    )
+    Returns:
+        Dict of source_id -> resolved file path (only for sources that resolved successfully).
+    """
+    source_files: dict[str, Path] = {}
+    for src in settings.sources:
+        if not src.enabled:
+            continue
+        src_path = _resolve_source_path(src, no_fetch, cache_dir)
+        if src_path:
+            source_files[src.id] = src_path
+        else:
+            discarded[_SOURCE_MISSING_REASON] += 1
+            stats = source_stats.setdefault(src.id, {})
+            stats[_SOURCE_MISSING_REASON] = stats.get(_SOURCE_MISSING_REASON, 0) + 1
+    return source_files
 
 
 def _write_categories(dist_dir: Path, chosen: dict[str, str]) -> None:
@@ -207,7 +138,9 @@ def _collect_domains(
     source_stats: dict[str, dict[str, int]],
     debug_log: list[str] | None = None,
 ) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
-    """Collect and validate domains from all sources.
+    """Collect and validate domains from all sources using source-level parallelism.
+
+    Each source is processed in a separate worker (parse + sanitize + allowlist filter).
 
     Returns:
         (domain_to_categories, domain_to_sources)
@@ -215,29 +148,30 @@ def _collect_domains(
     domain_to_categories: dict[str, set[str]] = defaultdict(set)
     domain_to_sources: dict[str, set[str]] = defaultdict(set)
 
-    for src in settings.sources:
-        if not src.enabled:
-            continue
-        for domain, category, source_id, reason in _process_source(
-            src,
-            no_fetch,
-            cache_dir,
-            drop_patterns,
-            discarded,
-            source_stats,
-            debug_log=debug_log,
-        ):
-            if reason != _OK_REASON:
-                continue
+    # Resolve all source paths in the main process
+    source_files = _resolve_all_source_paths(settings, no_fetch, cache_dir, discarded, source_stats)
 
-            if domain in allow:
-                discarded[_ALLOWLIST_REASON] += 1
-                stats = source_stats.setdefault(src.id, {})
-                stats[_ALLOWLIST_REASON] = stats.get(_ALLOWLIST_REASON, 0) + 1
-                continue
+    # Process all sources in parallel (one worker per source)
+    results = parallel_process_all_sources(source_files, drop_patterns, allow)
 
-            domain_to_categories[domain].add(category)
-            domain_to_sources[domain].add(source_id)
+    # Merge results into global counters and domain mappings
+    source_map = {s.id: s for s in settings.sources}
+    for src_id, (valid_domains, stats) in results.items():
+        source_stats[src_id] = stats
+        for k, v in stats.items():
+            if k != "lines":  # "lines" is metadata, not a discard reason
+                discarded[k] += v
+
+        src = source_map[src_id]
+        for domain in valid_domains:
+            domain_to_categories[domain].add(src.category)
+            domain_to_sources[domain].add(src_id)
+
+        if debug_log is not None:
+            debug_log.append(
+                f"{src_id}: lines={stats.get('lines', 0)} "
+                f"valid={len(valid_domains)} parallel=source-level"
+            )
 
     return domain_to_categories, domain_to_sources
 
@@ -263,7 +197,7 @@ def _write_provenance(dist_dir: Path, provenance: dict) -> None:
             }
         prov_out.write_text(json.dumps(prov_data, indent=2), encoding=_ENCODING)
     except Exception:
-        pass
+        logging.warning("Failed to write provenance file %s", prov_out, exc_info=True)
 
 
 def _write_source_stats(dist_dir: Path, source_stats: dict[str, dict[str, int]]) -> None:
@@ -271,14 +205,16 @@ def _write_source_stats(dist_dir: Path, source_stats: dict[str, dict[str, int]])
     if not source_stats:
         return
     out = dist_dir / "reports" / "source_stats.json"
-    with contextlib.suppress(Exception):
+    try:
         out.write_text(json.dumps(source_stats, indent=2), encoding=_ENCODING)
+    except Exception:
+        logging.warning("Failed to write source stats to %s", out, exc_info=True)
 
 
 def _write_marginal(
     dist_dir: Path,
     domain_to_sources: dict[str, set[str]],
-    source_map: dict[str, any],
+    source_map: dict[str, Any],
 ) -> None:
     """Write marginal contribution per source."""
     try:
@@ -300,7 +236,7 @@ def _write_marginal(
             "\n".join(md) + "\n", encoding=_ENCODING
         )
     except Exception:
-        pass
+        logging.warning("Failed to write marginal contribution report", exc_info=True)
 
 
 def build(
