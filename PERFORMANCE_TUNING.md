@@ -2,58 +2,52 @@
 
 **Objetivo**: Reducir el tiempo de procesamiento de millones de dominios de 30-60 minutos a <10 minutos.
 
-## 🚀 Optimizaciones Implementadas
+## Optimizaciones Implementadas
 
-### 1. **Parallel HTTP Fetching** ✅
+### 1. Parallel HTTP Fetching
 - **Antes**: Descargar 150+ listas secuencialmente (~30-40 min en red)
-- **Después**: ThreadPoolExecutor con 3x concurrencia
-- **Impacto**: **4-6x más rápido** (~5-8 min)
-- **Código**: `src/blocklist_builder/parallel.py::parallel_fetch_sources()`
+- **Despues**: ThreadPoolExecutor con concurrencia configurable
+- **Impacto**: 4-6x mas rapido (~5-8 min)
+- **Codigo**: `src/blocklist_builder/parallel.py::parallel_fetch_sources()`
 
 ```bash
 # Controlar workers:
 export BLOCKLIST_WORKERS=8  # Default: CPU_COUNT * 0.75
-python3 -c "import sys; sys.path.insert(0, 'src'); from blocklist_builder.cli import main; sys.exit(main(['build']))"
+python3 run_build.py
 ```
 
-### 2. **Parallel Parse + Sanitization** ✅
-- **Antes**: Procesar líneas secuencialmente
-- **Después**: ProcessPoolExecutor para sources >100K líneas
-- **Impacto**: **2-3x más rápido** para Firebog
-- **Código**: `src/blocklist_builder/parallel.py::parallel_parse_and_sanitize()`
-- **Uso automático**: Se activa solo para sources grandes
+### 2. Source-Level Parallel Processing
+- **Antes**: Procesar cada fuente secuencialmente (una tras otra)
+- **Despues**: ProcessPoolExecutor con un worker por fuente, todas en paralelo
+- **Impacto**: Tiempo limitado por la fuente mas lenta, no por la suma de todas
+- **Codigo**: `src/blocklist_builder/parallel.py::parallel_process_all_sources()`
+- **Uso automatico**: Se activa con 3+ fuentes habilitadas
 
-### 3. **Streaming Deduplication** ✅
-- **Antes**: Cargar todos los dominios en memoria con `set()` (overhead ~2-3 GB)
-- **Después**: Streaming iterador sin cargar todo
-- **Impacto**: **Usa 50% menos RAM**
-- **Código**: `src/blocklist_builder/parallel.py::streaming_deduplicate()`
-
-### 4. **HTTP Caching + ETags** ✅
+### 3. HTTP Caching + ETags
 - **Antes**: Descargar todas las listas en cada build
-- **Después**: Caché con validación ETag (skip 80-90% de descargas)
-- **Impacto**: **Second run: 1-2 min** (solo diffs)
-- **Código**: `src/blocklist_builder/fetch.py` con metadata JSON
+- **Despues**: Cache con validacion ETag (skip 80-90% de descargas)
+- **Impacto**: Segundo run: 1-2 min (solo diffs)
+- **Codigo**: `src/blocklist_builder/fetch.py` con metadata JSON
 
-### 5. **Batch I/O Operations** ✅
-- **Antes**: Write línea por línea
-- **Después**: Batch writes (write all, then flush)
-- **Impacto**: **10-20% más rápido**
-- **Código**: `build.py::_write_categories()`, `_write_profiles()`
+### 4. Batch I/O Operations
+- **Antes**: Write linea por linea
+- **Despues**: Batch writes (write all, then flush)
+- **Impacto**: 10-20% mas rapido
+- **Codigo**: `build.py::_write_categories()`, `_write_profiles()`
 
-## 📊 Benchmarks Esperados
+## Benchmarks Esperados
 
-### Escenario: Firebog (~150 listas, 2.8M líneas raw)
+### Escenario: ~40 fuentes, 3-5M lineas raw
 
-| Fase | Antes | Después | Speedup |
+| Fase | Antes | Despues | Speedup |
 |------|-------|---------|---------|
-| Fetch (red) | 25-35 min | 5-8 min | **4-6x** |
-| Parse + Sanitize | 8-12 min | 3-5 min | **2-3x** |
-| Deduplicate | 2-3 min | 1-2 min | **2x** |
-| I/O + Reports | 1-2 min | 0.5-1 min | **2x** |
+| Fetch (red) | 25-35 min | 5-8 min | 4-6x |
+| Parse + Sanitize | 8-12 min | 3-5 min | 2-3x |
+| Deduplicacion | 2-3 min | 1-2 min | 2x |
+| I/O + Reports | 1-2 min | 0.5-1 min | 2x |
 | **Total** | **36-52 min** | **9-16 min** | **3-5x** |
 
-### Escenario: Con caché (segundo run)
+### Escenario: Con cache (segundo run)
 
 | Fase | Tiempo |
 |------|--------|
@@ -61,156 +55,77 @@ python3 -c "import sys; sys.path.insert(0, 'src'); from blocklist_builder.cli im
 | Parse + Sanitize | 3-5 min |
 | Total | **4-7 min** |
 
-## 🎯 Cómo Usar
+## Como Usar
 
-### Opción 1: Build Rápido (Producción Recomendada)
-
+### Build estandar
 ```bash
-# Build inicial: 10-15 min
-python3 -c "import sys; sys.path.insert(0, 'src'); from blocklist_builder.cli import main; sys.exit(main(['build']))"
-
-# Builds subsecuentes: 4-7 min (caché)
-# (misma línea, salta ~90% de descargas)
+python3 run_build.py
 ```
 
-### Opción 2: Tunar Workers (Avanzado)
-
+### Tunar Workers
 ```bash
-# Usar más workers (útil en servidores)
+# Mas workers (servidores con muchos cores)
 export BLOCKLIST_WORKERS=16
-python3 -c "import sys; sys.path.insert(0, 'src'); from blocklist_builder.cli import main; sys.exit(main(['build']))"
+python3 run_build.py
 
-# O menos (si RAM limitado)
+# Menos workers (RAM limitado)
 export BLOCKLIST_WORKERS=2
-python3 -c "import sys; sys.path.insert(0, 'src'); from blocklist_builder.cli import main; sys.exit(main(['build']))"
+python3 run_build.py
 ```
 
-### Opción 3: Incremental (Desarrollo)
-
+### Incremental (sin red)
 ```bash
-# Skip network, usar .cache existente
-python3 -c "import sys; sys.path.insert(0, 'src'); from blocklist_builder.cli import main; sys.exit(main(['build', '--no-fetch']))"
-# (~4-5 min sin red)
-```
-
-## 🔍 Monitoring de Performance
-
-### Ver logs detallados:
-
-```bash
-export RUST_LOG=debug
-python3 -c "import sys; sys.path.insert(0, 'src'); from blocklist_builder.cli import main; sys.exit(main(['build']))"
-```
-
-### Perfilar con cProfile:
-
-```bash
-python3 -m cProfile -s cumtime -c "
-import sys
-sys.path.insert(0, 'src')
+python3 -c "
+import sys; sys.path.insert(0, 'src')
 from blocklist_builder.cli import main
-main(['build', '--no-fetch'])
-" 2>&1 | head -50
-```
-
-## 📈 Optimizaciones Futuras (No Implementadas)
-
-1. **Memory-mapped deduplication** (Para >5M dominios)
-   - Usar `mmap` + SQLite para dedup sin cargar todo en RAM
-   - Impacto: Soportar 10M+ dominios
-
-2. **Incremental build** (CI/CD)
-   - Trackear cambios por source
-   - Rebuilder solo deltas modificados
-   - Impacto: Daily updates en <2 min
-
-3. **Distributed processing** (Scale)
-   - Procesar chunks en workers remotos
-   - Merge resultados
-   - Impacto: 10-20x speedup en clusters
-
-4. **GPU acceleration** (Experimental)
-   - IDNA validation en GPU
-   - Regex matching parallelizado
-   - Impacto: Especulativo, probablemente 5-10% gain
-
-## ✅ Validación
-
-Para verificar que las optimizaciones funcionan:
-
-```bash
-# Build test con timing
-time python3 -c "
-import sys
-sys.path.insert(0, 'src')
-from blocklist_builder.cli import main
-main(['build', '--no-fetch'])
+sys.exit(main(['build', '--no-fetch']))
 "
-
-# Esperado: <10s (con caché) a <30s (CPU-bound)
-# Anterior: 30-60 min
 ```
 
-## 📝 Configuración Recomendada por Caso
+## Configuracion Recomendada por Caso
 
-### 🏠 Home Lab / Raspberry Pi (RAM limitado)
+### Home Lab / Raspberry Pi (RAM limitado)
 ```bash
 export BLOCKLIST_WORKERS=2
 # Usado: ~512 MB
-# Tiempo: 15-20 min (aceptable para daily cron)
+# Tiempo: 15-20 min
 ```
 
-### 💼 Servidor (8+ cores, 32GB RAM)
+### Servidor (8+ cores, 32GB RAM)
 ```bash
 export BLOCKLIST_WORKERS=12
 # Usado: ~4 GB
 # Tiempo: 8-12 min
 ```
 
-### 🐳 Docker / CI-CD (Control sobre recursos)
+### Docker / CI-CD
 ```bash
 export BLOCKLIST_WORKERS=4
 # Usado: ~1-2 GB
 # Tiempo: 12-18 min
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### "Out of Memory"
 ```bash
 export BLOCKLIST_WORKERS=1  # Desabilitar paralelismo
-python3 -c "import sys; sys.path.insert(0, 'src'); from blocklist_builder.cli import main; sys.exit(main(['build', '--no-fetch']))"
+python3 run_build.py
 ```
 
 ### "Slow despite optimizations"
-```bash
-# Check:
-1. Disk I/O: iostat -x 1
-2. Network: iftop -i eth0
-3. CPU: top -p $(pidof python3)
-
-# Probable causa:
+Causas probables:
 - Disco lento (HDD vs SSD): esperado, 30-40 min en HDD
 - Red lenta (<10 Mbps): esperado, 40-60 min
-- CPU old (<4 cores): esperado, 20-30 min
-```
+- CPU viejo (<4 cores): esperado, 20-30 min
 
-### "Workers no se usan"
-```bash
-# Verificar:
-ps aux | grep python
-# Deberías ver múltiples procesos de python3
+## Notas Tecnicas
 
-# Si solo ves 1: posible que sea --no-fetch (no usa paralelismo)
-```
-
-## 📚 Referencias
-
-- **Threading vs ProcessPoolExecutor**: Fetch usa threads (I/O bound), parse usa processes (CPU bound)
-- **GIL**: Python GIL limitó parse secuencial; ProcessPoolExecutor lo evita
-- **Scaling limits**: Beyond 16 workers, overhead de context switching > beneficio
+- **Threading vs Processes**: Fetch usa threads (I/O bound), parse usa processes (CPU bound)
+- **GIL**: Python GIL limita parse secuencial; ProcessPoolExecutor lo evita
+- **Scaling**: Mas alla de 16 workers, overhead de context switching > beneficio
+- **Memoria**: El cuello de botella es `domain_to_categories` / `domain_to_sources` (~1-1.5 GB para 3M+ dominios), no el procesamiento paralelo
 
 ---
 
-**Última actualización**: 2026-01-31
-**Versión**: 1.0.1 (Performance Tuning Release)
+**Ultima actualizacion**: 2026-02-14

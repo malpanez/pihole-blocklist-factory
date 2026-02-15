@@ -360,8 +360,3 @@ def test_parallel_process_all_sources_worker_failure(monkeypatch, tmp_path: Path
     result = parallel.parallel_process_all_sources(files, [], frozenset())
     # All 3 sources should still be processed (failed one falls back to local)
     assert len(result) == 3
-
-
-def test_streaming_deduplicate() -> None:
-    out = list(parallel.streaming_deduplicate(["A.com", "a.com", "b.com", ""]))
-    assert out == ["a.com", "b.com"]

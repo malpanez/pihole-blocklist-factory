@@ -53,21 +53,22 @@ sources:
   # OISD Blocklist - https://oisd.nl/
   # Lista curada manualmente, muy baja tasa de falsos positivos
   # ============================================================================
-  # OISD - Temporalmente no disponible (servidor caído)
-  # Habilitar cuando el servidor esté disponible
-  - id: oisd_basic
-    name: "OISD Basic"
+  # OISD - https://oisd.nl/
+  # Mirror GitHub (servidores oficiales devuelven 410 Gone desde 2024)
+  # Formato: domainswild2 (domain-only, un dominio por línea)
+  - id: oisd_big
+    name: "OISD Big"
     category: advertising
-    url: "https://dbl.oisd.nl/"
-    enabled: false
+    url: "https://raw.githubusercontent.com/sjhgvr/oisd/main/domainswild2_big.txt"
+    enabled: true
     tier: stable
     license: "MIT"
-    notes: "Lista OISD - ads y tracking. Muy curada, pocos falsos positivos."
+    notes: "OISD Big - ads, tracking, malware. 256k dominios. Muy curada."
 
   - id: oisd_nsfw
     name: "OISD NSFW"
     category: suspicious
-    url: "https://nsfw.oisd.nl/domains"
+    url: "https://raw.githubusercontent.com/sjhgvr/oisd/main/domainswild2_nsfw.txt"
     enabled: false
     tier: stable
     license: "MIT"

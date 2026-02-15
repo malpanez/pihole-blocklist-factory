@@ -286,11 +286,6 @@ def build(
     # Assign categories by precedence
     chosen = partition_by_precedence(domain_to_categories, settings.policies.category_precedence)
 
-    # NOTE: Subdomain collapsing desactivado.
-    # Pi-hole NO hace wildcard blocking con listas normales.
-    # Si bloqueas example.com, NO bloqueas ads.example.com automáticamente.
-    # Por eso necesitamos mantener todos los subdominios explícitos.
-
     # Build provenance and write metadata
     source_map = {s.id: s for s in settings.sources}
     provenance = build_provenance(

@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import os
 import re
-from collections.abc import Iterator, Sequence
+from collections.abc import Sequence
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from multiprocessing import cpu_count
 from pathlib import Path
@@ -293,22 +293,3 @@ def parallel_process_all_sources(
                 )
 
     return results
-
-
-def streaming_deduplicate(
-    domain_iterables: Iterator[str],
-) -> Iterator[str]:
-    """Stream unique domains using an in-memory set.
-
-    Args:
-        domain_iterables: Iterator of domains.
-
-    Yields:
-        Unique domains (lowercased, stripped).
-    """
-    seen: set[str] = set()
-    for domain in domain_iterables:
-        d = domain.strip().lower()
-        if d and d not in seen:
-            seen.add(d)
-            yield d

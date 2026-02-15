@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter, defaultdict
+from pathlib import Path
 from typing import Final
 
 _MIN_PATTERN_OCCURRENCES: Final = 5  # Mínimo de dominios para generar regex
@@ -101,7 +102,7 @@ def generate_regex_patterns(domains: set[str]) -> list[str]:
     return sorted(set(regex_patterns))
 
 
-def write_regex_file(output_path, patterns: list[str]) -> int:
+def write_regex_file(output_path: Path, patterns: list[str]) -> int:
     """Escribe archivo de regex para Pi-hole.
 
     Args:
