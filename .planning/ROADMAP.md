@@ -6,7 +6,7 @@ Systematic quality improvement of an existing, well-structured Python CLI tool. 
 
 ## Phases
 
-- [ ] **Phase 1: Core Pipeline Bugs** - Fix double-fetch, stats double-counting, and remove dead parallel function
+- [x] **Phase 1: Core Pipeline Bugs** - Fix double-fetch, stats double-counting, and remove dead parallel function (completed 2026-03-29)
 - [ ] **Phase 2: Analyze Pipeline Fix** - Restore `analyze` command so discard findings actually fire
 - [ ] **Phase 3: Profile Features Cleanup** - Remove silently-ignored Profile/Policies fields
 - [ ] **Phase 4: HTTP Conditional Fetching** - Implement ETag/If-Modified-Since to skip unchanged sources
@@ -116,7 +116,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Core Pipeline Bugs | 0/TBD | Not started | - |
+| 1. Core Pipeline Bugs | 0/TBD | Complete    | 2026-03-29 |
 | 2. Analyze Pipeline Fix | 0/TBD | Not started | - |
 | 3. Profile Features Cleanup | 0/TBD | Not started | - |
 | 4. HTTP Conditional Fetching | 0/TBD | Not started | - |
