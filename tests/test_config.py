@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 from pathlib import Path
 
 import blocklist_builder.config as config_mod
@@ -106,14 +105,9 @@ def test_load_settings_test_mode(tmp_path: Path, monkeypatch) -> None:
     _write(config_dir / "profiles.yml", "profiles: {}\n")
 
     monkeypatch.setenv("BLOCKLIST_SOURCES", "test")
-    cfg = importlib.reload(config_mod)
-
-    settings = cfg.load_settings(config_dir)
+    settings = config_mod.load_settings(config_dir)
     assert len(settings.sources) == 1
     assert settings.sources[0].id == "test1"
-
-    monkeypatch.delenv("BLOCKLIST_SOURCES", raising=False)
-    importlib.reload(config_mod)
 
 
 def test_read_yaml_missing(tmp_path: Path) -> None:

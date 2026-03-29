@@ -18,7 +18,6 @@ _DEFAULT_CATEGORY_PRECEDENCE: Final = [
     "other",
     "telemetry",
 ]
-_BLOCKLIST_SOURCES_MODE: Final = os.environ.get("BLOCKLIST_SOURCES", "sources")
 ConfigMode = Literal["sources", "test"]
 
 
@@ -56,8 +55,9 @@ def load_settings(config_dir: Path) -> Settings:
     - sources (default): sources.yml + sources.firebog.yml + sources.local.yml
     - test: sources.test.yml (for local testing)
     """
+    mode = os.environ.get("BLOCKLIST_SOURCES", "sources")
     # Use match/case for mode selection
-    match _BLOCKLIST_SOURCES_MODE:
+    match mode:
         case "test":
             # Load only test sources
             sources_yml = _read_yaml(config_dir / "sources.test.yml")
