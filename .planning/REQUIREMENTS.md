@@ -42,9 +42,9 @@
 
 ### CI/CD
 
-- [ ] **CICD-01**: `update.yml` detects blocklist changes using a mechanism that works with gitignored `dist/`
-- [ ] **CICD-02**: `build-lists.yml` overwrites a fixed `latest` release tag instead of creating a new release per run
-- [ ] **CICD-03**: `update.yml` uses `astral-sh/setup-uv@v5` (consistent with `ci.yml` and `build-lists.yml`)
+- [x] **CICD-01**: `update.yml` detects blocklist changes using a mechanism that works with gitignored `dist/`
+- [x] **CICD-02**: `build-lists.yml` overwrites a fixed `latest` release tag instead of creating a new release per run
+- [x] **CICD-03**: `update.yml` uses `astral-sh/setup-uv@v5` (consistent with `ci.yml` and `build-lists.yml`)
 
 ### Code Quality
 
@@ -102,9 +102,9 @@
 | SEC-03 | Phase 5 | Complete |
 | SEC-04 | Phase 5 | Complete |
 | SEC-05 | Phase 5 | Complete |
-| CICD-01 | Phase 6 | Pending |
-| CICD-02 | Phase 6 | Pending |
-| CICD-03 | Phase 6 | Pending |
+| CICD-01 | Phase 6 | Complete |
+| CICD-02 | Phase 6 | Complete |
+| CICD-03 | Phase 6 | Complete |
 | QUAL-01 | Phase 7 | Pending |
 | QUAL-02 | Phase 7 | Pending |
 | QUAL-03 | Phase 7 | Pending |

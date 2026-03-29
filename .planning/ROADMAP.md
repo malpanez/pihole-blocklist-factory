@@ -11,7 +11,7 @@ Systematic quality improvement of an existing, well-structured Python CLI tool. 
 - [x] **Phase 3: Profile Features Cleanup** - Remove silently-ignored Profile/Policies fields (completed 2026-03-29)
 - [x] **Phase 4: HTTP Conditional Fetching** - Implement ETag/If-Modified-Since to skip unchanged sources (completed 2026-03-29)
 - [x] **Phase 5: Security Hardening** - Consistent path traversal checks, remove unbounded cache, HTTP warning (completed 2026-03-29)
-- [ ] **Phase 6: CI/CD Fixes** - Fix broken update workflow and unbounded release accumulation
+- [x] **Phase 6: CI/CD Fixes** - Fix broken update workflow and unbounded release accumulation (completed 2026-03-29)
 - [ ] **Phase 7: Code Quality Cleanup** - YAML injection, env var scope, TLD regex, stubs, author field
 
 ## Phase Details
@@ -95,7 +95,7 @@ Plans:
   3. `update.yml` uses `astral-sh/setup-uv@v5` consistent with `ci.yml` and `build-lists.yml`
 **Plans**: 1 plan
 Plans:
-- [ ] 06-01-PLAN.md — Fix update workflow and release tag strategy
+- [x] 06-01-PLAN.md — Fix update workflow and release tag strategy
 
 ### Phase 7: Code Quality Cleanup
 **Goal**: Low-severity code quality issues resolved — no YAML injection risk, correct env var scoping, tighter domain validation, no stub commands
@@ -121,5 +121,5 @@ Plans:
 | 3. Profile Features Cleanup | 1/1 | Complete    | 2026-03-29 |
 | 4. HTTP Conditional Fetching | 1/1 | Complete   | 2026-03-29 |
 | 5. Security Hardening | 1/1 | Complete   | 2026-03-29 |
-| 6. CI/CD Fixes | 0/TBD | Not started | - |
+| 6. CI/CD Fixes | 1/1 | Complete   | 2026-03-29 |
 | 7. Code Quality Cleanup | 0/TBD | Not started | - |

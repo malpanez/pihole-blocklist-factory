@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 05-security-hardening 05-01-PLAN.md
-last_updated: "2026-03-29T14:57:42.736Z"
+stopped_at: Completed 06-ci-cd-fixes 06-01-PLAN.md
+last_updated: "2026-03-29T15:26:30.777Z"
 last_activity: 2026-03-29
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 5
-  completed_plans: 5
+  completed_phases: 6
+  total_plans: 6
+  completed_plans: 6
   percent: 0
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Produce accurate, deduplicated, correctly-categorized blocklists from multiple sources — with stats and provenance that reflect reality.
-**Current focus:** Phase 05 — security-hardening
+**Current focus:** Phase 06 — ci-cd-fixes
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
+Phase: 06 (ci-cd-fixes) — EXECUTING
+Plan: 1 of 1
 Status: Phase complete — ready for verification
 Last activity: 2026-03-29
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-profile-features-cleanup P01 | 3 | 3 tasks | 8 files |
 | Phase 04-http-conditional-fetching P01 | 738 | 2 tasks | 4 files |
 | Phase 05-security-hardening P01 | 21 | 1 tasks | 6 files |
+| Phase 06-ci-cd-fixes PP01 | 5 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ Recent decisions affecting current work:
 - [Phase 04-http-conditional-fetching]: Check status_code == 304 before raise_for_status per HTTP spec (304 is not an error)
 - [Phase 05-security-hardening]: Check .. in raw Path.parts before .resolve() — post-resolve check is ineffective since .resolve() eliminates .. components
 - [Phase 05-security-hardening]: Remove @cache from _compute_hash — unbounded memory growth with large content strings
+- [Phase 06-ci-cd-fixes]: Use sha256sum hash comparison for dist/ change detection -- dist/ is gitignored so git diff always returns 0
+- [Phase 06-ci-cd-fixes]: Use tag_name: latest with make_latest: true for rolling single release instead of per-run unique tags
 
 ### Pending Todos
 
@@ -89,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-29T14:51:30.273Z
-Stopped at: Completed 05-security-hardening 05-01-PLAN.md
+Last session: 2026-03-29T15:26:30.768Z
+Stopped at: Completed 06-ci-cd-fixes 06-01-PLAN.md
 Resume file: None
