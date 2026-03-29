@@ -7,10 +7,10 @@
 
 ### Pipeline Correctness
 
-- [ ] **PIPE-01**: Build pipeline fetches each HTTP source exactly once per run
-- [ ] **PIPE-02**: `stats.json` `total_lines` reflects actual input line count (~4.5M, not ~9.1M)
-- [ ] **PIPE-03**: `stats.json` separates processing-ok counters from discard-reason counters
-- [ ] **PIPE-04**: Dead function `parallel_parse_and_sanitize` removed from production code and tests
+- [x] **PIPE-01**: Build pipeline fetches each HTTP source exactly once per run
+- [x] **PIPE-02**: `stats.json` `total_lines` reflects actual input line count (~4.5M, not ~9.1M)
+- [x] **PIPE-03**: `stats.json` separates processing-ok counters from discard-reason counters
+- [x] **PIPE-04**: Dead function `parallel_parse_and_sanitize` removed from production code and tests
 
 ### Analysis Quality
 
@@ -82,10 +82,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PIPE-01 | Phase 1 | Pending |
-| PIPE-02 | Phase 1 | Pending |
-| PIPE-03 | Phase 1 | Pending |
-| PIPE-04 | Phase 1 | Pending |
+| PIPE-01 | Phase 1 | Complete |
+| PIPE-02 | Phase 1 | Complete |
+| PIPE-03 | Phase 1 | Complete |
+| PIPE-04 | Phase 1 | Complete |
 | ANLZ-01 | Phase 2 | Pending |
 | ANLZ-02 | Phase 2 | Pending |
 | ANLZ-03 | Phase 2 | Pending |

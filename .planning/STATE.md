@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: verifying
+stopped_at: Completed 01-core-pipeline-bugs 01-01-PLAN.md
+last_updated: "2026-03-29T10:50:32.289Z"
+last_activity: 2026-03-29
+progress:
+  total_phases: 7
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
+  percent: 0
+---
+
 # Project State
 
 ## Project Reference
@@ -9,16 +25,17 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 
 ## Current Position
 
-Phase: 1 of 7 (Core Pipeline Bugs)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-29 — Roadmap created, 31 requirements mapped to 7 phases
+Phase: 1 (Core Pipeline Bugs) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-03-29
 
 Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0
 - Average duration: -
 - Total execution time: 0 hours
@@ -30,10 +47,12 @@ Progress: [░░░░░░░░░░] 0%
 | - | - | - | - |
 
 **Recent Trend:**
+
 - Last 5 plans: -
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01-core-pipeline-bugs P01 | 4 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -45,6 +64,9 @@ Recent decisions affecting current work:
 - [Pre-phase]: Remove `include_sources`/`exclude_sources`/`strict` rather than implement (Phase 3)
 - [Pre-phase]: Fix double-fetch by removing redundant `parallel_fetch_sources()` call (Phase 1)
 - [Pre-phase]: Load `source_stats.json` in analyze.py instead of reconstructing from provenance (Phase 2)
+- [Phase 01-core-pipeline-bugs]: Remove parallel_parse_and_sanitize entirely — never called in production, dead code with its own test file
+- [Phase 01-core-pipeline-bugs]: Compute total_lines from source_stats lines values — authoritative raw line counts vs inflated discarded Counter
+- [Phase 01-core-pipeline-bugs]: Filter _ok_keys at Stats construction boundary — minimal change, keeps Counter accumulation semantics intact
 
 ### Pending Todos
 
@@ -57,6 +79,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-29
-Stopped at: Roadmap created, STATE.md initialized. Ready to run /gsd:plan-phase 1
+Last session: 2026-03-29T10:50:32.281Z
+Stopped at: Completed 01-core-pipeline-bugs 01-01-PLAN.md
 Resume file: None

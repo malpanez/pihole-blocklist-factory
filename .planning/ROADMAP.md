@@ -28,7 +28,7 @@ Systematic quality improvement of an existing, well-structured Python CLI tool. 
   5. `ruff check` passes and `pytest` reports ≥99% coverage after changes
 **Plans**: 1 plan
 Plans:
-- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
+- [x] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
 
 ### Phase 2: Analyze Pipeline Fix
 **Goal**: The `analyze` command produces real discard-rate findings when sources have high discard rates
