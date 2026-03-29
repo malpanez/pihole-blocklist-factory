@@ -83,7 +83,7 @@ Plans:
   5. `ruff check` passes and `pytest` reports ≥99% coverage after changes
 **Plans**: 1 plan
 Plans:
-- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
+- [ ] 05-01-PLAN.md — Add path traversal guards, http:// warning, remove @cache from _compute_hash
 
 ### Phase 6: CI/CD Fixes
 **Goal**: The update workflow reliably detects blocklist changes and releases do not accumulate unboundedly
@@ -95,7 +95,7 @@ Plans:
   3. `update.yml` uses `astral-sh/setup-uv@v5` consistent with `ci.yml` and `build-lists.yml`
 **Plans**: 1 plan
 Plans:
-- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
+- [ ] 06-01-PLAN.md — Fix update workflow and release tag strategy
 
 ### Phase 7: Code Quality Cleanup
 **Goal**: Low-severity code quality issues resolved — no YAML injection risk, correct env var scoping, tighter domain validation, no stub commands
@@ -110,7 +110,7 @@ Plans:
   6. `ruff check` passes and `pytest` reports ≥99% coverage after changes
 **Plans**: 1 plan
 Plans:
-- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
+- [ ] 07-01-PLAN.md — YAML injection fix, env var scope, TLD regex, stubs cleanup
 
 ## Progress
 
@@ -120,6 +120,6 @@ Plans:
 | 2. Analyze Pipeline Fix | 1/1 | Complete    | 2026-03-29 |
 | 3. Profile Features Cleanup | 1/1 | Complete    | 2026-03-29 |
 | 4. HTTP Conditional Fetching | 1/1 | Complete   | 2026-03-29 |
-| 5. Security Hardening | 0/TBD | Not started | - |
+| 5. Security Hardening | 0/1 | Not started | - |
 | 6. CI/CD Fixes | 0/TBD | Not started | - |
 | 7. Code Quality Cleanup | 0/TBD | Not started | - |
