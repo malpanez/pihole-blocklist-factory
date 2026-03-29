@@ -40,6 +40,7 @@ created: 2026-03-29
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
 | 5-01-01 | 01 | 1 | SEC-01, SEC-05 | unit | `uv run pytest tests/test_fetch.py -x -q` | ✅ | ⬜ pending |
 | 5-01-02 | 01 | 1 | SEC-02 | unit | `uv run pytest tests/test_parallel_extra.py -x -q` | ✅ | ⬜ pending |
+
 | 5-01-03 | 01 | 1 | SEC-03, SEC-04 | unit | `uv run pytest tests/test_build.py -x -q` | ✅ | ⬜ pending |
 | 5-01-04 | 01 | 2 | SEC-01..05 | coverage | `uv run pytest --cov=blocklist_builder --cov-report=term-missing -q && uv run ruff check src/` | ✅ | ⬜ pending |
 
