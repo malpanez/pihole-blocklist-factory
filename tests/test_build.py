@@ -172,6 +172,46 @@ def test_build_source_missing_and_drop_patterns(tmp_path: Path) -> None:
     assert stats.discarded["parse_pattern_drop"] == 1
 
 
+def test_build_file_traversal_rejected(tmp_path: Path) -> None:
+    repo_root = tmp_path
+    settings = _settings_for(
+        repo_root,
+        sources=[
+            Source(
+                id="trav",
+                name="trav",
+                category="advertising",
+                url="file:///tmp/../etc/passwd",
+                enabled=True,
+            )
+        ],
+    )
+    stats = build(repo_root, settings, no_fetch=True)
+    assert stats.discarded["source_missing"] == 1
+
+
+def test_build_http_emits_warning(tmp_path: Path, caplog) -> None:
+    import logging
+
+    repo_root = tmp_path
+    settings = _settings_for(
+        repo_root,
+        sources=[
+            Source(
+                id="insecure",
+                name="insecure",
+                category="advertising",
+                url="http://example.com/list.txt",
+                enabled=True,
+            )
+        ],
+    )
+    with caplog.at_level(logging.WARNING):
+        stats = build(repo_root, settings, no_fetch=True)
+    assert any("http://" in r.message for r in caplog.records)
+    assert stats.discarded["source_missing"] == 1
+
+
 def test_build_debug_log(tmp_path: Path, monkeypatch) -> None:
     repo_root = tmp_path
     source1 = repo_root / "inputs" / "source1.txt"

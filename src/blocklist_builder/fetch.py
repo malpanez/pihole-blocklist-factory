@@ -25,9 +25,8 @@ def _cache_key(url: str) -> str:
     return hashlib.sha256(url.encode(_HASH_ENCODING)).hexdigest()[:_HASH_DIGEST_LENGTH]
 
 
-@cache
 def _compute_hash(content: str) -> str:
-    """Compute SHA256 hash of content (cached)."""
+    """Compute SHA256 hash of content."""
     return hashlib.sha256(content.encode(_HASH_ENCODING)).hexdigest()
 
 
@@ -99,7 +98,10 @@ def fetch_to_cache(
     # Handle file:// URLs and local paths using match/case
     match url:
         case url if url.startswith("file://"):
-            src = Path(url.removeprefix("file://"))
+            raw = Path(url.removeprefix("file://"))
+            if ".." in raw.parts:
+                raise ValueError(f"path traversal detected in file:// URL: {url}")
+            src = raw.resolve()
             content = src.read_text(encoding=_HASH_ENCODING, errors="ignore")
         case url if (p := Path(url)).exists():
             content = p.read_text(encoding=_HASH_ENCODING, errors="ignore")

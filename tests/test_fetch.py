@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from blocklist_builder.fetch import fetch_to_cache
+import pytest
+
+from blocklist_builder.fetch import _compute_hash, fetch_to_cache
 
 
 def _write(path: Path, content: str) -> None:
@@ -33,3 +35,12 @@ def test_fetch_to_cache_file_url(tmp_path: Path) -> None:
     assert cache_path.exists()
     assert metadata.line_count == 2
     assert metadata.source_id == "s2"
+
+
+def test_fetch_to_cache_traversal_rejected(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="path traversal"):
+        fetch_to_cache("file:///tmp/../etc/passwd", tmp_path / "cache", source_id="x")
+
+
+def test_compute_hash_not_cached() -> None:
+    assert not hasattr(_compute_hash, "cache_info")
