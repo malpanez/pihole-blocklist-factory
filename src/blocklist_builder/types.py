@@ -49,6 +49,3 @@ class Provenance:
 class Profile:
     name: str
     include_categories: set[str] = field(default_factory=set)
-    include_sources: set[str] = field(default_factory=set)
-    exclude_sources: set[str] = field(default_factory=set)
-    strict: bool = False  # strict=True can block telemetry; false must respect core_domains
