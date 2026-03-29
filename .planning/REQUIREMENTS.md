@@ -14,9 +14,9 @@
 
 ### Analysis Quality
 
-- [ ] **ANLZ-01**: `analyze` command produces discard-rate findings for sources with high discard rates
-- [ ] **ANLZ-02**: `_compute_discard_findings` reads actual discard data from `source_stats.json`
-- [ ] **ANLZ-03**: Tests for `_compute_discard_findings` exercise the real code path (no hardcoded bypass)
+- [x] **ANLZ-01**: `analyze` command produces discard-rate findings for sources with high discard rates
+- [x] **ANLZ-02**: `_compute_discard_findings` reads actual discard data from `source_stats.json`
+- [x] **ANLZ-03**: Tests for `_compute_discard_findings` exercise the real code path (no hardcoded bypass)
 
 ### Profile Integrity
 
@@ -86,9 +86,9 @@
 | PIPE-02 | Phase 1 | Complete |
 | PIPE-03 | Phase 1 | Complete |
 | PIPE-04 | Phase 1 | Complete |
-| ANLZ-01 | Phase 2 | Pending |
-| ANLZ-02 | Phase 2 | Pending |
-| ANLZ-03 | Phase 2 | Pending |
+| ANLZ-01 | Phase 2 | Complete |
+| ANLZ-02 | Phase 2 | Complete |
+| ANLZ-03 | Phase 2 | Complete |
 | PROF-01 | Phase 3 | Pending |
 | PROF-02 | Phase 3 | Pending |
 | PROF-03 | Phase 3 | Pending |
