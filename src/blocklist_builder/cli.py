@@ -119,15 +119,6 @@ def sync_firebog_cmd(dry_run: bool) -> None:
         raise SystemExit(1) from e
 
 
-@cli.command("sync-github-catalog")
-def sync_github_catalog_cmd() -> None:
-    """Sync GitHub catalog of known blocklists."""
-    click.echo("sync-github-catalog: Feature not fully implemented yet.")
-    click.echo("To use external catalogs:")
-    click.echo("  1. See config/sources.yml for structure")
-    click.echo("  2. Add new sources via 'sources_local.yml' or update config/sources.yml")
-
-
 @cli.command()
 def analyze() -> None:
     """Analyze build outputs for quality and errors."""
