@@ -20,6 +20,8 @@ def test_fetch_to_cache_local_path(tmp_path: Path) -> None:
     assert cache_path.exists()
     assert metadata.line_count == 3
     assert metadata.source_id == "s1"
+    assert metadata.etag is None
+    assert metadata.last_modified is None
 
 
 def test_fetch_to_cache_file_url(tmp_path: Path) -> None:
@@ -33,3 +35,5 @@ def test_fetch_to_cache_file_url(tmp_path: Path) -> None:
     assert cache_path.exists()
     assert metadata.line_count == 2
     assert metadata.source_id == "s2"
+    assert metadata.etag is None
+    assert metadata.last_modified is None
