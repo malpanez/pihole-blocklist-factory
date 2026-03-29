@@ -10,7 +10,7 @@ Systematic quality improvement of an existing, well-structured Python CLI tool. 
 - [x] **Phase 2: Analyze Pipeline Fix** - Restore `analyze` command so discard findings actually fire (completed 2026-03-29)
 - [x] **Phase 3: Profile Features Cleanup** - Remove silently-ignored Profile/Policies fields (completed 2026-03-29)
 - [x] **Phase 4: HTTP Conditional Fetching** - Implement ETag/If-Modified-Since to skip unchanged sources (completed 2026-03-29)
-- [ ] **Phase 5: Security Hardening** - Consistent path traversal checks, remove unbounded cache, HTTP warning
+- [x] **Phase 5: Security Hardening** - Consistent path traversal checks, remove unbounded cache, HTTP warning (completed 2026-03-29)
 - [ ] **Phase 6: CI/CD Fixes** - Fix broken update workflow and unbounded release accumulation
 - [ ] **Phase 7: Code Quality Cleanup** - YAML injection, env var scope, TLD regex, stubs, author field
 
@@ -83,7 +83,7 @@ Plans:
   5. `ruff check` passes and `pytest` reports ≥99% coverage after changes
 **Plans**: 1 plan
 Plans:
-- [ ] 05-01-PLAN.md — Add path traversal guards, http:// warning, remove @cache from _compute_hash
+- [x] 05-01-PLAN.md — Add path traversal guards, http:// warning, remove @cache from _compute_hash
 
 ### Phase 6: CI/CD Fixes
 **Goal**: The update workflow reliably detects blocklist changes and releases do not accumulate unboundedly
@@ -120,6 +120,6 @@ Plans:
 | 2. Analyze Pipeline Fix | 1/1 | Complete    | 2026-03-29 |
 | 3. Profile Features Cleanup | 1/1 | Complete    | 2026-03-29 |
 | 4. HTTP Conditional Fetching | 1/1 | Complete   | 2026-03-29 |
-| 5. Security Hardening | 0/1 | Not started | - |
+| 5. Security Hardening | 1/1 | Complete   | 2026-03-29 |
 | 6. CI/CD Fixes | 0/TBD | Not started | - |
 | 7. Code Quality Cleanup | 0/TBD | Not started | - |

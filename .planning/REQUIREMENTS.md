@@ -34,11 +34,11 @@
 
 ### Security
 
-- [ ] **SEC-01**: `file://` URLs with `..` path traversal rejected in `fetch_to_cache()`
-- [ ] **SEC-02**: `file://` URLs with `..` path traversal rejected in `_resolve_local_sources()`
-- [ ] **SEC-03**: Tests cover path traversal rejection paths (currently 0 coverage on `build.py:69-70`)
-- [ ] **SEC-04**: `http://` (non-HTTPS) source URLs emit a `logging.warning()` at build time
-- [ ] **SEC-05**: `@cache` decorator removed from `_compute_hash` (eliminates unbounded memory retention)
+- [x] **SEC-01**: `file://` URLs with `..` path traversal rejected in `fetch_to_cache()`
+- [x] **SEC-02**: `file://` URLs with `..` path traversal rejected in `_resolve_local_sources()`
+- [x] **SEC-03**: Tests cover path traversal rejection paths (currently 0 coverage on `build.py:69-70`)
+- [x] **SEC-04**: `http://` (non-HTTPS) source URLs emit a `logging.warning()` at build time
+- [x] **SEC-05**: `@cache` decorator removed from `_compute_hash` (eliminates unbounded memory retention)
 
 ### CI/CD
 
@@ -97,11 +97,11 @@
 | NET-02 | Phase 4 | Complete |
 | NET-03 | Phase 4 | Complete |
 | NET-04 | Phase 4 | Complete |
-| SEC-01 | Phase 5 | Pending |
-| SEC-02 | Phase 5 | Pending |
-| SEC-03 | Phase 5 | Pending |
-| SEC-04 | Phase 5 | Pending |
-| SEC-05 | Phase 5 | Pending |
+| SEC-01 | Phase 5 | Complete |
+| SEC-02 | Phase 5 | Complete |
+| SEC-03 | Phase 5 | Complete |
+| SEC-04 | Phase 5 | Complete |
+| SEC-05 | Phase 5 | Complete |
 | CICD-01 | Phase 6 | Pending |
 | CICD-02 | Phase 6 | Pending |
 | CICD-03 | Phase 6 | Pending |
