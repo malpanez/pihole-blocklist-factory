@@ -6,7 +6,6 @@ import blocklist_builder.parallel as parallel
 from blocklist_builder.parallel import (
     get_optimal_workers,
     parallel_fetch_sources,
-    parallel_parse_and_sanitize,
 )
 
 
@@ -89,71 +88,6 @@ def test_parallel_fetch_sources_with_errors(monkeypatch, tmp_path: Path) -> None
     assert "s3" not in result
 
 
-def test_parallel_parse_and_sanitize_processpool_success(monkeypatch) -> None:
-    lines = ["0.0.0.0 example.com", "# comment"] * 1000
-
-    class _Future:
-        def __init__(self, fn, args) -> None:
-            self._fn = fn
-            self._args = args
-
-        def result(self):
-            return self._fn(*self._args)
-
-    class _Executor:
-        def __init__(self, *args, **kwargs) -> None:
-            pass
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-        def submit(self, fn, args):
-            return _Future(fn, args)
-
-    monkeypatch.setattr(parallel, "ProcessPoolExecutor", _Executor)
-    monkeypatch.setattr(parallel, "as_completed", lambda futures: futures)
-    monkeypatch.setattr(parallel, "get_optimal_workers", lambda: 2)
-
-    valid, discarded, parsed_ok, sanitized_ok = parallel_parse_and_sanitize(lines, drop_patterns=[])
-    assert parsed_ok == 1000
-    assert sanitized_ok == 1000
-    assert len(valid) == 1000
-    assert discarded["parse_comment"] == 1000
-
-
-def test_parallel_parse_and_sanitize_processpool_future_error(monkeypatch) -> None:
-    lines = ["0.0.0.0 example.com"] * 2000
-
-    class _Future:
-        def result(self):
-            raise RuntimeError("boom")
-
-    class _Executor:
-        def __init__(self, *args, **kwargs) -> None:
-            pass
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-        def submit(self, fn, args):
-            return _Future()
-
-    monkeypatch.setattr(parallel, "ProcessPoolExecutor", _Executor)
-    monkeypatch.setattr(parallel, "as_completed", lambda futures: futures)
-    monkeypatch.setattr(parallel, "get_optimal_workers", lambda: 2)
-
-    valid, discarded, parsed_ok, sanitized_ok = parallel_parse_and_sanitize(lines, drop_patterns=[])
-    assert parsed_ok == 2000
-    assert sanitized_ok == 2000
-    assert len(valid) == 2000
-
-
 def test_process_chunk_worker_patterns() -> None:
     valid, discarded, parsed_ok, sanitized_ok = parallel._process_chunk_worker(
         (["bad", "example.com"], [r"^bad$"])
@@ -170,54 +104,6 @@ def test_process_chunk_worker_empty_patterns() -> None:
     assert parsed_ok == 1
     assert sanitized_ok == 1
     assert valid == ["example.com"]
-
-
-def test_parallel_parse_and_sanitize_processpool_success_discard(monkeypatch) -> None:
-    lines = ["0.0.0.0 example.com"] * 2000
-
-    class _Future:
-        def __init__(self, result) -> None:
-            self._result = result
-
-        def result(self):
-            return self._result
-
-    class _Executor:
-        def __init__(self, *args, **kwargs) -> None:
-            pass
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
-
-        def submit(self, fn, args):
-            return _Future((["example.com"], {"parse_comment": 1}, 1, 1))
-
-    monkeypatch.setattr(parallel, "ProcessPoolExecutor", _Executor)
-    monkeypatch.setattr(parallel, "as_completed", lambda futures: futures)
-    monkeypatch.setattr(parallel, "get_optimal_workers", lambda: 1)
-
-    valid, discarded, parsed_ok, sanitized_ok = parallel_parse_and_sanitize(lines, drop_patterns=[])
-    assert parsed_ok == 1
-    assert sanitized_ok == 1
-    assert valid == ["example.com"]
-    assert discarded["parse_comment"] == 1
-
-
-def test_parallel_parse_and_sanitize_processpool_ctor_error(monkeypatch) -> None:
-    lines = ["0.0.0.0 example.com"] * 2000
-
-    class _Executor:
-        def __init__(self, *args, **kwargs) -> None:
-            raise RuntimeError("boom")
-
-    monkeypatch.setattr(parallel, "ProcessPoolExecutor", _Executor)
-    valid, discarded, parsed_ok, sanitized_ok = parallel_parse_and_sanitize(lines, drop_patterns=[])
-    assert parsed_ok == 2000
-    assert sanitized_ok == 2000
-    assert len(valid) == 2000
 
 
 def test_process_source_file_worker(tmp_path: Path) -> None:

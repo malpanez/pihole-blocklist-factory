@@ -13,7 +13,7 @@ from typing import Any, Final
 from .classify import build_provenance, partition_by_precedence
 from .config import Settings
 from .fetch import fetch_to_cache
-from .parallel import parallel_fetch_sources, parallel_process_all_sources
+from .parallel import parallel_process_all_sources
 from .regex import generate_regex_patterns, write_regex_file
 from .report import Stats, write_reports
 from .sanitize import sanitize_domain
@@ -257,13 +257,6 @@ def build(
 
     cache_dir = repo_root / ".cache" / "sources"
 
-    # Parallel fetch all sources first
-    _ = parallel_fetch_sources(
-        [s for s in settings.sources if s.enabled],
-        cache_dir,
-        no_fetch=no_fetch,
-    )
-
     debug_enabled = os.environ.get("BLOCKLIST_DEBUG", "").lower() in {"1", "true", "yes"}
     debug_log: list[str] | None = [] if debug_enabled else None
 
@@ -312,14 +305,15 @@ def build(
     # Generate stats
     parsed_ok = discarded.get(f"{_PARSE_PREFIX}ok", 0)
     sanitized_ok = discarded.get(f"{_SANITIZE_PREFIX}ok", 0)
-    total_lines = sum(discarded.values())
+    total_lines = sum(s.get("lines", 0) for s in source_stats.values())
 
+    _ok_keys = {f"{_PARSE_PREFIX}ok", f"{_SANITIZE_PREFIX}ok"}
     stats = Stats(
         total_lines=total_lines,
         parsed_ok=parsed_ok,
         sanitized_ok=sanitized_ok,
         unique_domains=len(all_domains),
-        discarded=dict(discarded),
+        discarded={k: v for k, v in discarded.items() if k not in _ok_keys},
     )
     write_reports(dist_dir / "reports", stats)
 

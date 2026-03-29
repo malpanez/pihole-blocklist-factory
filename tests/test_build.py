@@ -104,7 +104,9 @@ def test_build_writes_stats_and_source_stats(tmp_path: Path) -> None:
     assert stats.discarded["sanitize_not_fqdn"] == 1
     assert stats.discarded["sanitize_single_label"] == 1
     assert stats.discarded["allowlisted"] == 2
-    assert stats.total_lines == sum(stats.discarded.values())
+    assert stats.total_lines == 15
+    assert "parse_ok" not in stats.discarded
+    assert "sanitize_ok" not in stats.discarded
 
     all_txt = (repo_root / "dist" / "all.txt").read_text(encoding="utf-8").splitlines()
     assert set(all_txt) == {
