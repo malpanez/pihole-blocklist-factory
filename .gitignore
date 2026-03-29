@@ -24,3 +24,7 @@ config/sources.local.yml
 # Build outputs (can be versioned for distribution)
 # Uncomment to ignore dist/:
 dist/
+
+# Local dev helpers
+create_test_data.py
+run_build.py
