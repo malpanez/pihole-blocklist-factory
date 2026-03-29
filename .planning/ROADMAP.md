@@ -108,9 +108,10 @@ Plans:
   4. `create_test_data.py` and `run_build.py` are added to `.gitignore`
   5. `sync-github-catalog` CLI command is removed or clearly marked stub; `scripts/pihole-adlists-setup-v6.sh` clarified; `pyproject.toml` author updated
   6. `ruff check` passes and `pytest` reports ≥99% coverage after changes
-**Plans**: 1 plan
+**Plans**: 2 plans
 Plans:
-- [ ] 07-01-PLAN.md — YAML injection fix, env var scope, TLD regex, stubs cleanup
+- [ ] 07-01-PLAN.md — Env var scope fix, YAML injection fix, TLD regex tightening
+- [ ] 07-02-PLAN.md — Remove stubs, update gitignore and pyproject metadata
 
 ## Progress
 
@@ -122,4 +123,4 @@ Plans:
 | 4. HTTP Conditional Fetching | 1/1 | Complete   | 2026-03-29 |
 | 5. Security Hardening | 1/1 | Complete   | 2026-03-29 |
 | 6. CI/CD Fixes | 1/1 | Complete   | 2026-03-29 |
-| 7. Code Quality Cleanup | 0/TBD | Not started | - |
+| 7. Code Quality Cleanup | 0/2 | Not started | - |
