@@ -9,7 +9,7 @@ Systematic quality improvement of an existing, well-structured Python CLI tool. 
 - [x] **Phase 1: Core Pipeline Bugs** - Fix double-fetch, stats double-counting, and remove dead parallel function (completed 2026-03-29)
 - [x] **Phase 2: Analyze Pipeline Fix** - Restore `analyze` command so discard findings actually fire (completed 2026-03-29)
 - [x] **Phase 3: Profile Features Cleanup** - Remove silently-ignored Profile/Policies fields (completed 2026-03-29)
-- [ ] **Phase 4: HTTP Conditional Fetching** - Implement ETag/If-Modified-Since to skip unchanged sources
+- [x] **Phase 4: HTTP Conditional Fetching** - Implement ETag/If-Modified-Since to skip unchanged sources (completed 2026-03-29)
 - [ ] **Phase 5: Security Hardening** - Consistent path traversal checks, remove unbounded cache, HTTP warning
 - [ ] **Phase 6: CI/CD Fixes** - Fix broken update workflow and unbounded release accumulation
 - [ ] **Phase 7: Code Quality Cleanup** - YAML injection, env var scope, TLD regex, stubs, author field
@@ -69,7 +69,7 @@ Plans:
   5. `ruff check` passes and `pytest` reports ≥99% coverage after changes
 **Plans**: 1 plan
 Plans:
-- [ ] 04-01-PLAN.md — Add conditional HTTP headers and 304 handling to fetch pipeline
+- [x] 04-01-PLAN.md — Add conditional HTTP headers and 304 handling to fetch pipeline
 
 ### Phase 5: Security Hardening
 **Goal**: Path traversal protection is consistent across all `file://` code paths and memory usage is bounded
@@ -119,7 +119,7 @@ Plans:
 | 1. Core Pipeline Bugs | 0/TBD | Complete    | 2026-03-29 |
 | 2. Analyze Pipeline Fix | 1/1 | Complete    | 2026-03-29 |
 | 3. Profile Features Cleanup | 1/1 | Complete    | 2026-03-29 |
-| 4. HTTP Conditional Fetching | 0/1 | Not started | - |
+| 4. HTTP Conditional Fetching | 1/1 | Complete   | 2026-03-29 |
 | 5. Security Hardening | 0/TBD | Not started | - |
 | 6. CI/CD Fixes | 0/TBD | Not started | - |
 | 7. Code Quality Cleanup | 0/TBD | Not started | - |

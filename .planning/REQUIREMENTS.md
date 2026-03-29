@@ -27,10 +27,10 @@
 
 ### Network Efficiency
 
-- [ ] **NET-01**: HTTP fetch uses `If-None-Match` / `If-Modified-Since` when prior metadata exists
-- [ ] **NET-02**: HTTP 304 response reuses cached file without re-writing
-- [ ] **NET-03**: `SourceMetadata.etag` and `last_modified` are populated on successful fetches
-- [ ] **NET-04**: Tests cover first-fetch, 304 (unchanged), and 200 (updated) scenarios
+- [x] **NET-01**: HTTP fetch uses `If-None-Match` / `If-Modified-Since` when prior metadata exists
+- [x] **NET-02**: HTTP 304 response reuses cached file without re-writing
+- [x] **NET-03**: `SourceMetadata.etag` and `last_modified` are populated on successful fetches
+- [x] **NET-04**: Tests cover first-fetch, 304 (unchanged), and 200 (updated) scenarios
 
 ### Security
 
@@ -93,10 +93,10 @@
 | PROF-02 | Phase 3 | Complete |
 | PROF-03 | Phase 3 | Complete |
 | PROF-04 | Phase 3 | Complete |
-| NET-01 | Phase 4 | Pending |
-| NET-02 | Phase 4 | Pending |
-| NET-03 | Phase 4 | Pending |
-| NET-04 | Phase 4 | Pending |
+| NET-01 | Phase 4 | Complete |
+| NET-02 | Phase 4 | Complete |
+| NET-03 | Phase 4 | Complete |
+| NET-04 | Phase 4 | Complete |
 | SEC-01 | Phase 5 | Pending |
 | SEC-02 | Phase 5 | Pending |
 | SEC-03 | Phase 5 | Pending |
