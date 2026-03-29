@@ -191,3 +191,60 @@ sources:
     tier: stable
     license: "MIT"
     notes: "Tracking específico de Android."
+
+  # ============================================================================
+  # Phishing
+  # ============================================================================
+  - id: openphish
+    name: "OpenPhish Feed"
+    category: malicious
+    url: "https://openphish.com/feed.txt"
+    enabled: true
+    tier: stable
+    license: "CC BY-NC-SA 4.0"
+    notes: "Sitios de phishing activos detectados automáticamente. Actualizado cada ~12h."
+
+  - id: phishing_army
+    name: "Phishing Army"
+    category: malicious
+    url: "https://phishing.army/download/phishing_army_blocklist.txt"
+    enabled: true
+    tier: stable
+    license: "CC BY-NC-SA 4.0"
+    notes: "Lista de phishing curada con fuentes múltiples (OpenPhish, PhishTank, etc.)."
+
+  # ============================================================================
+  # Malware adicional
+  # ============================================================================
+  - id: cert_pl
+    name: "CERT Poland Malware Domains"
+    category: malicious
+    url: "https://hole.cert.pl/domains/domains.txt"
+    enabled: true
+    tier: stable
+    license: "free to use"
+    notes: "Dominios maliciosos reportados por CERT Poland. Muy activa, actualizada diariamente."
+
+  # ============================================================================
+  # EasyPrivacy - tracking agresivo
+  # ============================================================================
+  - id: easyprivacy_hosts
+    name: "EasyPrivacy Hosts"
+    category: tracking
+    url: "https://v.firebog.net/hosts/Easyprivacy.txt"
+    enabled: true
+    tier: stable
+    license: "GPL-3.0"
+    notes: "EasyPrivacy en formato hosts - trackers, analytics, fingerprinting."
+
+  # ============================================================================
+  # HaGeZi Gambling
+  # ============================================================================
+  - id: hagezi_gambling
+    name: "HaGeZi Gambling"
+    category: suspicious
+    url: "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/domains/gambling.txt"
+    enabled: false
+    tier: stable
+    license: "GPL-3.0"
+    notes: "Sitios de apuestas y juegos de azar. Deshabilitada por defecto."
