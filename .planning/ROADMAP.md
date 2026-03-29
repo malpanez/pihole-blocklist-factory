@@ -69,7 +69,7 @@ Plans:
   5. `ruff check` passes and `pytest` reports ≥99% coverage after changes
 **Plans**: 1 plan
 Plans:
-- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
+- [ ] 04-01-PLAN.md — Add conditional HTTP headers and 304 handling to fetch pipeline
 
 ### Phase 5: Security Hardening
 **Goal**: Path traversal protection is consistent across all `file://` code paths and memory usage is bounded
@@ -119,7 +119,7 @@ Plans:
 | 1. Core Pipeline Bugs | 0/TBD | Complete    | 2026-03-29 |
 | 2. Analyze Pipeline Fix | 1/1 | Complete    | 2026-03-29 |
 | 3. Profile Features Cleanup | 1/1 | Complete    | 2026-03-29 |
-| 4. HTTP Conditional Fetching | 0/TBD | Not started | - |
+| 4. HTTP Conditional Fetching | 0/1 | Not started | - |
 | 5. Security Hardening | 0/TBD | Not started | - |
 | 6. CI/CD Fixes | 0/TBD | Not started | - |
 | 7. Code Quality Cleanup | 0/TBD | Not started | - |
