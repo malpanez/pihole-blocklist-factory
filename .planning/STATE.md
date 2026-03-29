@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 06-ci-cd-fixes 06-01-PLAN.md
-last_updated: "2026-03-29T15:28:48.149Z"
+stopped_at: Completed 07-code-quality-cleanup 07-01-PLAN.md
+last_updated: "2026-03-29T15:56:52.383Z"
 last_activity: 2026-03-29
 progress:
   total_phases: 7
-  completed_phases: 6
-  total_plans: 6
-  completed_plans: 6
+  completed_phases: 7
+  total_plans: 8
+  completed_plans: 8
   percent: 0
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-29)
 
 **Core value:** Produce accurate, deduplicated, correctly-categorized blocklists from multiple sources — with stats and provenance that reflect reality.
-**Current focus:** Phase 06 — ci-cd-fixes
+**Current focus:** Phase 07 — code-quality-cleanup
 
 ## Current Position
 
-Phase: 7
-Plan: Not started
+Phase: 07 (code-quality-cleanup) — EXECUTING
+Plan: 2 of 2
 Status: Phase complete — ready for verification
 Last activity: 2026-03-29
 
@@ -58,6 +58,8 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04-http-conditional-fetching P01 | 738 | 2 tasks | 4 files |
 | Phase 05-security-hardening P01 | 21 | 1 tasks | 6 files |
 | Phase 06-ci-cd-fixes PP01 | 5 | 2 tasks | 2 files |
+| Phase 07-code-quality-cleanup P07-02 | 2 | 2 tasks | 5 files |
+| Phase 07-code-quality-cleanup P01 | 12 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -80,6 +82,11 @@ Recent decisions affecting current work:
 - [Phase 05-security-hardening]: Remove @cache from _compute_hash — unbounded memory growth with large content strings
 - [Phase 06-ci-cd-fixes]: Use sha256sum hash comparison for dist/ change detection -- dist/ is gitignored so git diff always returns 0
 - [Phase 06-ci-cd-fixes]: Use tag_name: latest with make_latest: true for rolling single release instead of per-run unique tags
+- [Phase 07-code-quality-cleanup]: Remove sync-github-catalog entirely rather than keep stub — FEAT-01 (v2) will re-add when implemented
+- [Phase 07-code-quality-cleanup]: Set pyproject.toml author to Winning Concepts Limited per global CLAUDE.md identity
+- [Phase 07-code-quality-cleanup]: Read BLOCKLIST_SOURCES inside load_settings() so monkeypatch.setenv works without importlib.reload
+- [Phase 07-code-quality-cleanup]: Use yaml.dump with default_flow_style=False to eliminate YAML injection risk in firebog output
+- [Phase 07-code-quality-cleanup]: TLD segment changed from [a-z0-9-]{2,63} to [a-z]{2,63} to reject numeric and hyphenated TLDs
 
 ### Pending Todos
 
@@ -92,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-29T15:26:30.768Z
-Stopped at: Completed 06-ci-cd-fixes 06-01-PLAN.md
+Last session: 2026-03-29T15:56:52.376Z
+Stopped at: Completed 07-code-quality-cleanup 07-01-PLAN.md
 Resume file: None

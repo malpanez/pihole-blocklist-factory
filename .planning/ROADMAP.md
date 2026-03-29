@@ -12,7 +12,7 @@ Systematic quality improvement of an existing, well-structured Python CLI tool. 
 - [x] **Phase 4: HTTP Conditional Fetching** - Implement ETag/If-Modified-Since to skip unchanged sources (completed 2026-03-29)
 - [x] **Phase 5: Security Hardening** - Consistent path traversal checks, remove unbounded cache, HTTP warning (completed 2026-03-29)
 - [x] **Phase 6: CI/CD Fixes** - Fix broken update workflow and unbounded release accumulation (completed 2026-03-29)
-- [ ] **Phase 7: Code Quality Cleanup** - YAML injection, env var scope, TLD regex, stubs, author field
+- [x] **Phase 7: Code Quality Cleanup** - YAML injection, env var scope, TLD regex, stubs, author field (completed 2026-03-29)
 
 ## Phase Details
 
@@ -110,8 +110,8 @@ Plans:
   6. `ruff check` passes and `pytest` reports ≥99% coverage after changes
 **Plans**: 2 plans
 Plans:
-- [ ] 07-01-PLAN.md — Env var scope fix, YAML injection fix, TLD regex tightening
-- [ ] 07-02-PLAN.md — Remove stubs, update gitignore and pyproject metadata
+- [x] 07-01-PLAN.md — Env var scope fix, YAML injection fix, TLD regex tightening
+- [x] 07-02-PLAN.md — Remove stubs, update gitignore and pyproject metadata
 
 ## Progress
 
@@ -123,4 +123,4 @@ Plans:
 | 4. HTTP Conditional Fetching | 1/1 | Complete   | 2026-03-29 |
 | 5. Security Hardening | 1/1 | Complete   | 2026-03-29 |
 | 6. CI/CD Fixes | 1/1 | Complete   | 2026-03-29 |
-| 7. Code Quality Cleanup | 0/2 | Not started | - |
+| 7. Code Quality Cleanup | 2/2 | Complete   | 2026-03-29 |

@@ -48,13 +48,13 @@
 
 ### Code Quality
 
-- [ ] **QUAL-01**: `firebog.py` YAML generation uses `yaml.dump()` — no manual string construction
-- [ ] **QUAL-02**: `BLOCKLIST_SOURCES` env var read inside `load_settings()`, not at module import time
-- [ ] **QUAL-03**: `_DOMAIN_RE` TLD segment rejects numeric-only TLDs (`[a-z]{2,63}` not `[a-z0-9-]{2,63}`)
-- [ ] **QUAL-04**: `create_test_data.py` and `run_build.py` added to `.gitignore`
-- [ ] **QUAL-05**: `pyproject.toml` author field updated from placeholder
-- [ ] **QUAL-06**: `sync-github-catalog` CLI command removed or clearly marked as not implemented
-- [ ] **QUAL-07**: `scripts/pihole-adlists-setup-v6.sh` clarified as user template or removed
+- [x] **QUAL-01**: `firebog.py` YAML generation uses `yaml.dump()` — no manual string construction
+- [x] **QUAL-02**: `BLOCKLIST_SOURCES` env var read inside `load_settings()`, not at module import time
+- [x] **QUAL-03**: `_DOMAIN_RE` TLD segment rejects numeric-only TLDs (`[a-z]{2,63}` not `[a-z0-9-]{2,63}`)
+- [x] **QUAL-04**: `create_test_data.py` and `run_build.py` added to `.gitignore`
+- [x] **QUAL-05**: `pyproject.toml` author field updated from placeholder
+- [x] **QUAL-06**: `sync-github-catalog` CLI command removed or clearly marked as not implemented
+- [x] **QUAL-07**: `scripts/pihole-adlists-setup-v6.sh` clarified as user template or removed
 
 ## v2 Requirements
 
@@ -105,13 +105,13 @@
 | CICD-01 | Phase 6 | Complete |
 | CICD-02 | Phase 6 | Complete |
 | CICD-03 | Phase 6 | Complete |
-| QUAL-01 | Phase 7 | Pending |
-| QUAL-02 | Phase 7 | Pending |
-| QUAL-03 | Phase 7 | Pending |
-| QUAL-04 | Phase 7 | Pending |
-| QUAL-05 | Phase 7 | Pending |
-| QUAL-06 | Phase 7 | Pending |
-| QUAL-07 | Phase 7 | Pending |
+| QUAL-01 | Phase 7 | Complete |
+| QUAL-02 | Phase 7 | Complete |
+| QUAL-03 | Phase 7 | Complete |
+| QUAL-04 | Phase 7 | Complete |
+| QUAL-05 | Phase 7 | Complete |
+| QUAL-06 | Phase 7 | Complete |
+| QUAL-07 | Phase 7 | Complete |
 
 **Coverage:**
 - v1 requirements: 31 total
