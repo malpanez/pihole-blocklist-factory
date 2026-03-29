@@ -32,7 +32,7 @@ Produce accurate, deduplicated, correctly-categorized blocklists from multiple s
 - [x] Implement HTTP conditional fetching (ETag/If-Modified-Since) to avoid redundant downloads — **Validated in Phase 4: HTTP Conditional Fetching**
 - [x] Consistent path traversal protection across all code paths — **Validated in Phase 5: Security Hardening**
 - [x] Fix CI/CD: `update.yml` never detects changes (dist/ gitignored), releases accumulate unboundedly — **Validated in Phase 6: CI/CD Fixes**
-- [ ] Code quality cleanup: YAML injection in firebog.py, env var at module scope, TLD regex, stub commands
+- [x] Code quality cleanup: YAML injection in firebog.py, env var at module scope, TLD regex, stub commands — **Validated in Phase 7: Code Quality Cleanup**
 
 ### Out of Scope
 
@@ -91,4 +91,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-29 after Phase 6: CI/CD Fixes complete*
+*Last updated: 2026-03-29 after Phase 7: Code Quality Cleanup complete — all 7 phases done*
