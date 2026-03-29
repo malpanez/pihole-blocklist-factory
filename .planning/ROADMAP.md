@@ -41,7 +41,7 @@ Plans:
   4. `ruff check` passes and `pytest` reports ≥99% coverage after changes
 **Plans**: 1 plan
 Plans:
-- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
+- [ ] 02-01-PLAN.md — Fix _compute_discard_findings to use source_stats.json, rewrite tests
 
 ### Phase 3: Profile Features Cleanup
 **Goal**: Profile and Policies dataclasses contain only fields the build pipeline actually uses
@@ -117,7 +117,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Core Pipeline Bugs | 0/TBD | Complete    | 2026-03-29 |
-| 2. Analyze Pipeline Fix | 0/TBD | Not started | - |
+| 2. Analyze Pipeline Fix | 0/1 | Planning | - |
 | 3. Profile Features Cleanup | 0/TBD | Not started | - |
 | 4. HTTP Conditional Fetching | 0/TBD | Not started | - |
 | 5. Security Hardening | 0/TBD | Not started | - |
