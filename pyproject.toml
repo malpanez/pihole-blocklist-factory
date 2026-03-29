@@ -5,7 +5,7 @@ description = "Build, sanitize, and partition Pi-hole blocklists with reports."
 readme = "README.md"
 requires-python = ">=3.11"
 license = {file = "LICENSE"}
-authors = [{name = "Your Name"}]
+authors = [{name = "Winning Concepts Limited"}]
 dependencies = [
   "PyYAML>=6.0.1",
   "requests>=2.32.0",

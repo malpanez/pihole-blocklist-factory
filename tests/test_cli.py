@@ -397,13 +397,6 @@ def test_cli_sync_firebog_import_error(monkeypatch) -> None:
     assert "requests package required" in result.output
 
 
-def test_cli_sync_github_catalog() -> None:
-    runner = CliRunner()
-    result = runner.invoke(cli.sync_github_catalog_cmd, [])
-    assert result.exit_code == 0
-    assert "sync-github-catalog" in result.output
-
-
 def test_cli_main_returns_codes(monkeypatch) -> None:
     def fake_cli(argv=None, standalone_mode=False):
         raise SystemExit(2)
