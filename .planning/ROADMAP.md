@@ -55,7 +55,7 @@ Plans:
   5. `ruff check` passes and `pytest` reports ≥99% coverage after changes
 **Plans**: 1 plan
 Plans:
-- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
+- [ ] 03-01-PLAN.md — Remove dead fields from dataclasses, clean YAML config, update tests
 
 ### Phase 4: HTTP Conditional Fetching
 **Goal**: Builds skip re-downloading sources that have not changed since the last run
@@ -118,7 +118,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Core Pipeline Bugs | 0/TBD | Complete    | 2026-03-29 |
 | 2. Analyze Pipeline Fix | 1/1 | Complete    | 2026-03-29 |
-| 3. Profile Features Cleanup | 0/TBD | Not started | - |
+| 3. Profile Features Cleanup | 0/1 | Not started | - |
 | 4. HTTP Conditional Fetching | 0/TBD | Not started | - |
 | 5. Security Hardening | 0/TBD | Not started | - |
 | 6. CI/CD Fixes | 0/TBD | Not started | - |
