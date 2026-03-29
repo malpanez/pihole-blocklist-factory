@@ -305,14 +305,15 @@ def build(
     # Generate stats
     parsed_ok = discarded.get(f"{_PARSE_PREFIX}ok", 0)
     sanitized_ok = discarded.get(f"{_SANITIZE_PREFIX}ok", 0)
-    total_lines = sum(discarded.values())
+    total_lines = sum(s.get("lines", 0) for s in source_stats.values())
 
+    _ok_keys = {f"{_PARSE_PREFIX}ok", f"{_SANITIZE_PREFIX}ok"}
     stats = Stats(
         total_lines=total_lines,
         parsed_ok=parsed_ok,
         sanitized_ok=sanitized_ok,
         unique_domains=len(all_domains),
-        discarded=dict(discarded),
+        discarded={k: v for k, v in discarded.items() if k not in _ok_keys},
     )
     write_reports(dist_dir / "reports", stats)
 
