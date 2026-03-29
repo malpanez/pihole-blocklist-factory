@@ -26,7 +26,9 @@ Systematic quality improvement of an existing, well-structured Python CLI tool. 
   3. `stats.json` `parse_ok` and `sanitize_ok` counters are separated from the discard-reason counters
   4. `parallel_parse_and_sanitize` function and its tests no longer exist in the codebase
   5. `ruff check` passes and `pytest` reports ≥99% coverage after changes
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
 
 ### Phase 2: Analyze Pipeline Fix
 **Goal**: The `analyze` command produces real discard-rate findings when sources have high discard rates
@@ -37,7 +39,9 @@ Systematic quality improvement of an existing, well-structured Python CLI tool. 
   2. `_compute_discard_findings` reads per-source discard data from `source_stats.json` instead of reconstructing from provenance
   3. Tests for `_compute_discard_findings` exercise the real code path without hardcoded bypasses
   4. `ruff check` passes and `pytest` reports ≥99% coverage after changes
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
 
 ### Phase 3: Profile Features Cleanup
 **Goal**: Profile and Policies dataclasses contain only fields the build pipeline actually uses
@@ -49,7 +53,9 @@ Systematic quality improvement of an existing, well-structured Python CLI tool. 
   3. `config/profiles.yml` and `config/policies.yml` contain no references to removed fields
   4. All existing tests pass after field removal with no behavior change in build output
   5. `ruff check` passes and `pytest` reports ≥99% coverage after changes
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
 
 ### Phase 4: HTTP Conditional Fetching
 **Goal**: Builds skip re-downloading sources that have not changed since the last run
@@ -61,7 +67,9 @@ Systematic quality improvement of an existing, well-structured Python CLI tool. 
   3. `SourceMetadata.etag` and `last_modified` are non-None after a successful fetch that returns those headers
   4. Tests cover first-fetch, 304 (unchanged), and 200 (updated) code paths
   5. `ruff check` passes and `pytest` reports ≥99% coverage after changes
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
 
 ### Phase 5: Security Hardening
 **Goal**: Path traversal protection is consistent across all `file://` code paths and memory usage is bounded
@@ -73,7 +81,9 @@ Systematic quality improvement of an existing, well-structured Python CLI tool. 
   3. A source URL using `http://` (not HTTPS) emits a `logging.warning()` at build time
   4. `_compute_hash` no longer carries the `@cache` decorator
   5. `ruff check` passes and `pytest` reports ≥99% coverage after changes
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
 
 ### Phase 6: CI/CD Fixes
 **Goal**: The update workflow reliably detects blocklist changes and releases do not accumulate unboundedly
@@ -83,7 +93,9 @@ Systematic quality improvement of an existing, well-structured Python CLI tool. 
   1. `update.yml` detects blocklist changes using a mechanism that works with `dist/` gitignored (e.g., hash comparison)
   2. `build-lists.yml` overwrites a fixed `latest` release tag instead of creating a new uniquely-tagged release each run
   3. `update.yml` uses `astral-sh/setup-uv@v5` consistent with `ci.yml` and `build-lists.yml`
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
 
 ### Phase 7: Code Quality Cleanup
 **Goal**: Low-severity code quality issues resolved — no YAML injection risk, correct env var scoping, tighter domain validation, no stub commands
@@ -96,7 +108,9 @@ Systematic quality improvement of an existing, well-structured Python CLI tool. 
   4. `create_test_data.py` and `run_build.py` are added to `.gitignore`
   5. `sync-github-catalog` CLI command is removed or clearly marked stub; `scripts/pihole-adlists-setup-v6.sh` clarified; `pyproject.toml` author updated
   6. `ruff check` passes and `pytest` reports ≥99% coverage after changes
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 01-01-PLAN.md — Remove dead code, fix double-fetch, fix stats double-counting
 
 ## Progress
 
