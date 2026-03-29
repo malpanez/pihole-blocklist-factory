@@ -98,22 +98,65 @@ def test_analyze_build_invalid_stats(tmp_path: Path) -> None:
     assert "error" in result
 
 
-def test_compute_discard_findings_triggers(monkeypatch) -> None:
-    import blocklist_builder.analyze as analyze_mod
+from blocklist_builder.analyze import _compute_discard_findings, _load_source_stats
 
-    class FakeDefaultDict(dict):
-        def __init__(self, *args, **kwargs):
-            super().__init__()
 
-        def __missing__(self, key):
-            val = {"sanitized_ok": 0, "discarded": 2}
-            self[key] = val
-            return val
+def test_compute_discard_findings_fires() -> None:
+    source_stats = {
+        "s1": {"lines": 100, "parse_ok": 100, "sanitize_ok": 40, "sanitize_ip": 60},
+        "s2": {"lines": 100, "parse_ok": 100, "sanitize_ok": 95},
+    }
+    source_map = {
+        "s1": Source(id="s1", name="Source One", category="advertising", url="x"),
+        "s2": Source(id="s2", name="Source Two", category="tracking", url="y"),
+    }
+    findings = _compute_discard_findings(source_stats, source_map, high_discard_threshold=0.5)
+    assert len(findings) == 1
+    assert "s1" in findings[0]
+    assert "60.0%" in findings[0]
 
-    monkeypatch.setattr(analyze_mod, "defaultdict", lambda factory: FakeDefaultDict())
-    provenance = {"a.com": {"source_ids": ["s1"]}}
-    source_map = {"s1": type("S", (), {"name": "S1"})()}
-    findings = analyze_mod._compute_discard_findings(
-        provenance, source_map, high_discard_threshold=0.5
-    )
-    assert findings
+
+def test_compute_discard_findings_no_finding() -> None:
+    source_stats = {
+        "s1": {"lines": 100, "parse_ok": 100, "sanitize_ok": 95},
+    }
+    source_map = {
+        "s1": Source(id="s1", name="Source One", category="advertising", url="x"),
+    }
+    findings = _compute_discard_findings(source_stats, source_map, high_discard_threshold=0.5)
+    assert len(findings) == 0
+
+
+def test_compute_discard_findings_zero_lines() -> None:
+    source_stats = {"s1": {"lines": 0, "sanitize_ok": 0}}
+    findings = _compute_discard_findings(source_stats, {}, high_discard_threshold=0.5)
+    assert len(findings) == 0
+
+
+def test_compute_discard_findings_source_not_in_map() -> None:
+    source_stats = {"unknown_src": {"lines": 100, "sanitize_ok": 10}}
+    findings = _compute_discard_findings(source_stats, {}, high_discard_threshold=0.5)
+    assert len(findings) == 1
+    assert "unknown_src" in findings[0]
+
+
+def test_load_source_stats_missing(tmp_path: Path) -> None:
+    result = _load_source_stats(tmp_path / "nonexistent")
+    assert result is None
+
+
+def test_load_source_stats_valid(tmp_path: Path) -> None:
+    reports = tmp_path / "reports"
+    reports.mkdir(parents=True)
+    data = {"s1": {"lines": 50, "sanitize_ok": 40}}
+    (reports / "source_stats.json").write_text(json.dumps(data), encoding="utf-8")
+    result = _load_source_stats(tmp_path)
+    assert result == data
+
+
+def test_load_source_stats_invalid_json(tmp_path: Path) -> None:
+    reports = tmp_path / "reports"
+    reports.mkdir(parents=True)
+    (reports / "source_stats.json").write_text("{bad", encoding="utf-8")
+    result = _load_source_stats(tmp_path)
+    assert result is None

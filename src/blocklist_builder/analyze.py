@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from collections import defaultdict
 from pathlib import Path
 
 from .config import Settings
@@ -34,29 +33,33 @@ def _load_provenance_and_stats(
     return provenance, stats_data
 
 
+def _load_source_stats(dist_dir: Path) -> dict | None:
+    source_stats_file = dist_dir / "reports" / "source_stats.json"
+    if not source_stats_file.exists():
+        return None
+    try:
+        return json.loads(source_stats_file.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
 def _compute_discard_findings(
-    provenance: dict, source_map: dict, high_discard_threshold: float = 0.5
+    source_stats_data: dict, source_map: dict, high_discard_threshold: float = 0.5
 ) -> list[str]:
-    """Compute sources with high discard rates."""
-    findings = []
-    source_stats = defaultdict(lambda: {"sanitized_ok": 0, "discarded": 0})
-
-    # Count domains per source
-    for _domain, prov_data in provenance.items():
-        for src_id in prov_data.get("source_ids", []):
-            source_stats[src_id]["sanitized_ok"] += 1
-
-    for src_id, stats in source_stats.items():
-        total = stats["sanitized_ok"] + stats["discarded"]
-        if total > 0:
-            discard_rate = stats["discarded"] / total
-            if discard_rate > high_discard_threshold:
-                src_name = source_map.get(src_id, {}).name if source_map.get(src_id) else src_id
-                findings.append(
-                    f"⚠️  High discard rate for {src_id} ({src_name}): {discard_rate:.1%} "
-                    f"({stats['discarded']}/{total} entries)"
-                )
-
+    findings: list[str] = []
+    for src_id, stats in source_stats_data.items():
+        lines = stats.get("lines", 0)
+        if lines == 0:
+            continue
+        sanitize_ok = stats.get("sanitize_ok", 0)
+        discard_rate = (lines - sanitize_ok) / lines
+        if discard_rate > high_discard_threshold:
+            src_name = source_map.get(src_id)
+            name = src_name.name if src_name else src_id
+            findings.append(
+                f"High discard rate for {src_id} ({name}): {discard_rate:.1%} "
+                f"({lines - sanitize_ok}/{lines} entries)"
+            )
     return findings
 
 
@@ -141,7 +144,8 @@ def analyze_build(dist_dir: Path, settings: Settings, output_file: Path | None =
     total_unique = len(provenance)
 
     # Compute findings
-    discard_findings = _compute_discard_findings(provenance, source_map)
+    source_stats_data = _load_source_stats(dist_dir)
+    discard_findings = _compute_discard_findings(source_stats_data, source_map) if source_stats_data else []
     overlap_findings, overlap_2, overlap_3_plus = _compute_overlap_findings(provenance)
 
     all_findings = discard_findings + overlap_findings
