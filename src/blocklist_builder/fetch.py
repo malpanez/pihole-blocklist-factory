@@ -58,20 +58,27 @@ def _save_metadata(metadata_path: Path, metadata: SourceMetadata) -> None:
 
 
 def _fetch_http(
-    url: str, timeout_s: int = _REQUESTS_TIMEOUT_DEFAULT, user_agent: str = _USER_AGENT
-) -> str:
+    url: str,
+    timeout_s: int = _REQUESTS_TIMEOUT_DEFAULT,
+    user_agent: str = _USER_AGENT,
+    conditional_headers: dict[str, str] | None = None,
+) -> tuple[str, str | None, str | None]:
     """Fetch content from HTTP URL with retries and user-agent."""
-    headers = {"User-Agent": user_agent}
+    headers: dict[str, str] = {"User-Agent": user_agent}
+    if conditional_headers:
+        headers.update(conditional_headers)
     for attempt in range(_RETRY_ATTEMPTS):
         try:
             r = requests.get(url, timeout=timeout_s, headers=headers)
+            if r.status_code == 304:
+                return "", r.headers.get("ETag"), r.headers.get("Last-Modified")
             r.raise_for_status()
-            return r.text
+            return r.text, r.headers.get("ETag"), r.headers.get("Last-Modified")
         except requests.RequestException:
             if attempt == _RETRY_ATTEMPTS - 1:
                 raise
             time.sleep(2**attempt)  # exponential backoff
-    return ""  # pragma: no cover
+    return "", None, None  # pragma: no cover
 
 
 def fetch_to_cache(
@@ -97,6 +104,8 @@ def fetch_to_cache(
     metadata_path = cache_dir / f"{key}.json"
 
     # Handle file:// URLs and local paths using match/case
+    resp_etag: str | None = None
+    resp_last_modified: str | None = None
     match url:
         case url if url.startswith("file://"):
             src = Path(url.removeprefix("file://"))
@@ -104,7 +113,30 @@ def fetch_to_cache(
         case url if (p := Path(url)).exists():
             content = p.read_text(encoding=_HASH_ENCODING, errors="ignore")
         case _:
-            content = _fetch_http(url, timeout_s=timeout_s)
+            prior = _load_metadata(metadata_path)
+            cond: dict[str, str] = {}
+            if prior and target.exists():
+                if prior.get("etag"):
+                    cond["If-None-Match"] = prior["etag"]
+                if prior.get("last_modified"):
+                    cond["If-Modified-Since"] = prior["last_modified"]
+            content, resp_etag, resp_last_modified = _fetch_http(
+                url, timeout_s=timeout_s, conditional_headers=cond or None
+            )
+            if not content and target.exists() and cond:
+                existing_meta = SourceMetadata(
+                    source_id=source_id,
+                    hash=prior["hash"],
+                    size_bytes=prior["size_bytes"],
+                    line_count=prior["line_count"],
+                    parsed_ok=0,
+                    sanitized_ok=0,
+                    etag=resp_etag or prior.get("etag"),
+                    last_modified=resp_last_modified or prior.get("last_modified"),
+                    fetch_timestamp=time.time(),
+                )
+                _save_metadata(metadata_path, existing_meta)
+                return target, existing_meta
 
     target.write_text(content, encoding=_HASH_ENCODING)
 
@@ -119,8 +151,8 @@ def fetch_to_cache(
         line_count=line_count,
         parsed_ok=0,  # Will be filled by caller
         sanitized_ok=0,  # Will be filled by caller
-        etag=None,
-        last_modified=None,
+        etag=resp_etag,
+        last_modified=resp_last_modified,
         fetch_timestamp=time.time(),
     )
 

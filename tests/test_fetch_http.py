@@ -6,8 +6,10 @@ import blocklist_builder.fetch as fetch
 
 
 class _Resp:
-    def __init__(self, text: str) -> None:
+    def __init__(self, text: str, status_code: int = 200, headers: dict | None = None) -> None:
         self.text = text
+        self.status_code = status_code
+        self.headers = headers or {}
 
     def raise_for_status(self) -> None:
         return None
