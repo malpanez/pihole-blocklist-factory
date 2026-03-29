@@ -63,7 +63,6 @@ def test_load_settings_merges_sources(tmp_path: Path) -> None:
                 "  category_precedence: [tracking, advertising]",
                 "  core_domains: [core.example]",
                 "  base_allowlist: [allow.example]",
-                "  sensitive_domains: [sensitive.example]",
             ]
         )
         + "\n",
@@ -75,9 +74,6 @@ def test_load_settings_merges_sources(tmp_path: Path) -> None:
                 "profiles:",
                 "  default:",
                 "    include_categories: [advertising]",
-                "    include_sources: [s1]",
-                "    exclude_sources: [s2]",
-                "    strict: true",
             ]
         )
         + "\n",
@@ -88,7 +84,6 @@ def test_load_settings_merges_sources(tmp_path: Path) -> None:
     assert [s.id for s in settings.sources] == ["s1", "s2"]
     assert settings.policies.category_precedence == ["tracking", "advertising"]
     assert "core.example" in settings.policies.core_domains
-    assert settings.profiles.by_name["default"].strict is True
 
 
 def test_load_settings_test_mode(tmp_path: Path, monkeypatch) -> None:

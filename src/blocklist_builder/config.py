@@ -27,7 +27,6 @@ class Policies:
     category_precedence: list[str]
     core_domains: set[str]
     base_allowlist: set[str]
-    sensitive_domains: set[str] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,7 +107,6 @@ def load_settings(config_dir: Path) -> Settings:
         ),
         core_domains=set(policies_data.get("core_domains", []) or []),
         base_allowlist=set(policies_data.get("base_allowlist", []) or []),
-        sensitive_domains=set(policies_data.get("sensitive_domains", []) or []),
     )
 
     # Parse profiles with better structure
@@ -118,9 +116,6 @@ def load_settings(config_dir: Path) -> Settings:
         profiles_dict[str(pname)] = Profile(
             name=str(pname),
             include_categories=set(pconf.get("include_categories", []) or []),
-            include_sources=set(pconf.get("include_sources", []) or []),
-            exclude_sources=set(pconf.get("exclude_sources", []) or []),
-            strict=bool(pconf.get("strict", False)),
         )
 
     prof = ProfilesConfig(by_name=profiles_dict)

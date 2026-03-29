@@ -25,7 +25,6 @@ def _settings() -> Settings:
         ],
         core_domains=set(),
         base_allowlist=set(),
-        sensitive_domains=set(),
     )
     profiles = ProfilesConfig(by_name={"default": Profile(name="default")})
     sources = [
