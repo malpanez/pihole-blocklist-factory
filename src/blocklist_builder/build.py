@@ -13,7 +13,7 @@ from typing import Any, Final
 from .classify import build_provenance, partition_by_precedence
 from .config import Settings
 from .fetch import fetch_to_cache
-from .parallel import parallel_fetch_sources, parallel_process_all_sources
+from .parallel import parallel_process_all_sources
 from .regex import generate_regex_patterns, write_regex_file
 from .report import Stats, write_reports
 from .sanitize import sanitize_domain
@@ -256,13 +256,6 @@ def build(
     drop_patterns = _load_drop_patterns(overrides_dir / "drop_patterns.txt")
 
     cache_dir = repo_root / ".cache" / "sources"
-
-    # Parallel fetch all sources first
-    _ = parallel_fetch_sources(
-        [s for s in settings.sources if s.enabled],
-        cache_dir,
-        no_fetch=no_fetch,
-    )
 
     debug_enabled = os.environ.get("BLOCKLIST_DEBUG", "").lower() in {"1", "true", "yes"}
     debug_log: list[str] | None = [] if debug_enabled else None
