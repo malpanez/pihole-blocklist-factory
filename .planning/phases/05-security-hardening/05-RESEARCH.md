@@ -43,7 +43,7 @@ No new libraries required. All changes use stdlib only.
 
 ### Pattern 1: Path Traversal Guard (build.py reference implementation)
 
-The existing guard in `build.py:66-70` is the canonical pattern to replicate:
+The existing guard in `build.py:66-70` is the canonical pattern:
 
 ```python
 # Source: build.py lines 66-70 (existing, verified)
@@ -55,7 +55,9 @@ case url if url.startswith("file://"):
     return file_path
 ```
 
-Key implementation detail: `.resolve()` is called first, then `.parts` is checked. After `.resolve()`, a legitimate `..` that resolves within an allowed directory will NOT appear in `.parts`. This means the check catches only paths that still contain `..` after resolution — which on most systems means symlink loops or paths constructed to escape the root. The guard is a pre-flight string check before the filesystem operation, not a post-resolution containment check.
+Key implementation detail: The existing build.py guard calls `.resolve()` first, then checks `.parts`. After `.resolve()`, `..` components are canonicalized away — so on most systems, `Path("/tmp/../etc/passwd").resolve()` becomes `Path("/etc/passwd")` which has NO `..` in `.parts`. The build.py guard still works in practice because the resolved path will not exist as an expected source, causing a `source_missing` increment downstream.
+
+**IMPORTANT — corrected approach for new guards (fetch.py, parallel.py):** The new guards in fetch.py and parallel.py MUST check `..` in the RAW path parts BEFORE calling `.resolve()`. This is because: (1) fetch.py raises `ValueError` and the test asserts it fires, and (2) after `.resolve()` the `..` is gone so the guard would never trigger. Example: `Path("/tmp/../etc/passwd").parts` = `('/', 'tmp', '..', 'etc', 'passwd')` — contains `..`. After `.resolve()`: `Path("/etc/passwd").parts` = `('/', 'etc', 'passwd')` — no `..`.
 
 **For fetch.py:** The guard must raise `ValueError` (or equivalent) rather than returning `None`, because `fetch_to_cache` returns `(Path, SourceMetadata)` — there is no sentinel return path. A `ValueError` is the appropriate signal for an invalid URL argument.
 
@@ -86,7 +88,7 @@ Remove the `@cache` decorator on line 29. The `from functools import cache` impo
 
 ### Anti-Patterns to Avoid
 
-- **Checking `..` before `.resolve()`:** A URL like `file:///tmp/foo/../bar` may be legitimate after resolution. The build.py pattern resolves first, then checks parts — this is correct. Do NOT check the raw string for `..` before resolving.
+- **Checking `..` AFTER `.resolve()` in fetch.py/parallel.py:** After `.resolve()`, `..` components are canonicalized away (e.g., `Path("/tmp/../etc/passwd").resolve()` becomes `Path("/etc/passwd")` with no `..` in `.parts`). The new fetch.py and parallel.py guards MUST check `..` in the raw path parts BEFORE calling `.resolve()`. The existing build.py guard uses post-resolve checking, which works only because it relies on the downstream `source_missing` path — do NOT replicate that pattern for the new guards.
 - **Removing the `cache` import from fetch.py:** `_cache_key` also uses `@cache`. Only remove the decorator from `_compute_hash`, not the import.
 - **Adding `logging` import to fetch.py just for SEC-04:** The `http://` warning belongs in `build.py` where `logging` is already imported, not in `fetch.py` which has no logging at all.
 
@@ -94,7 +96,7 @@ Remove the `@cache` decorator on line 29. The `from functools import cache` impo
 
 | Problem | Don't Build | Use Instead |
 |---------|-------------|-------------|
-| Path traversal detection | Custom regex or string splitting | `Path.resolve().parts` — already used in build.py |
+| Path traversal detection | Custom regex or string splitting | `Path.parts` check (pre-resolve for new guards) |
 | Memory-bounded hashing | Ring buffer cache with LRU eviction | Simply remove `@cache` — no replacement needed |
 
 ## Common Pitfalls
@@ -139,7 +141,7 @@ match src.url:
         return file_path
 ```
 
-### fetch.py — where to add SEC-01 guard
+### fetch.py — where to add SEC-01 guard (pre-resolve check)
 ```python
 # fetch.py lines 109-112 (current)
 match url:
@@ -147,16 +149,16 @@ match url:
         src = Path(url.removeprefix("file://"))
         content = src.read_text(encoding=_HASH_ENCODING, errors="ignore")
 ```
-Guard goes between `src = Path(...)` and `content = src.read_text(...)`. Raise `ValueError`.
+Guard goes between `src = Path(...)` and `content = src.read_text(...)`. Check `..` in `src.parts` BEFORE calling `.resolve()`, then resolve for the read. Raise `ValueError`.
 
-### parallel.py — where to add SEC-02 guard
+### parallel.py — where to add SEC-02 guard (pre-resolve check)
 ```python
 # parallel.py lines 75-77 (current)
 src_path = Path(url.removeprefix("file://")) if url.startswith("file://") else Path(url)
 if src_path.exists():
     result[src.id] = src_path
 ```
-Guard goes after `src_path` construction, before `if src_path.exists()`. Skip the source silently or with a warning.
+Guard goes after `src_path` construction. Check `..` in `src_path.parts` BEFORE calling `.resolve()`, then resolve for the exists check. Skip the source with a warning.
 
 ### fetch.py — SEC-05 decorator removal
 ```python
@@ -183,7 +185,7 @@ def _compute_hash(content: str) -> str:
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
 | SEC-01 | `fetch_to_cache("file:///tmp/../etc/passwd", ...)` raises `ValueError` | unit | `python3 -m pytest tests/test_fetch.py::test_fetch_to_cache_traversal_rejected -x` | Wave 0 |
-| SEC-02 | `_resolve_local_sources` with `file:///../` URL skips source (not in result dict) | unit | `python3 -m pytest tests/test_parallel.py::test_resolve_local_sources_traversal_rejected -x` | Wave 0 |
+| SEC-02 | `_resolve_local_sources` with `file:///../` URL skips source (not in result dict) | unit | `python3 -m pytest tests/test_parallel_extra.py::test_resolve_local_sources_traversal_rejected -x` | Wave 0 |
 | SEC-03 | `build()` with `file://` traversal URL skips source (no domains, source_missing counter) | integration | `python3 -m pytest tests/test_build.py::test_build_file_traversal_rejected -x` | Wave 0 |
 | SEC-04 | `build()` with `http://` URL emits `logging.warning` | unit | `python3 -m pytest tests/test_build.py::test_build_http_emits_warning -x` | Wave 0 |
 | SEC-05 | `_compute_hash` function object has no `__wrapped__` or `cache_info` attribute | unit | `python3 -m pytest tests/test_fetch.py::test_compute_hash_not_cached -x` | Wave 0 |
@@ -196,7 +198,7 @@ def _compute_hash(content: str) -> str:
 ### Wave 0 Gaps
 - [ ] `tests/test_fetch.py` — add `test_fetch_to_cache_traversal_rejected` and `test_compute_hash_not_cached`
 - [ ] `tests/test_build.py` — add `test_build_file_traversal_rejected` and `test_build_http_emits_warning`
-- [ ] `tests/test_parallel.py` — add `test_resolve_local_sources_traversal_rejected` (file exists, needs new test function)
+- [ ] `tests/test_parallel_extra.py` — add `test_resolve_local_sources_traversal_rejected` (file exists, needs new test function)
 
 ## State of the Art
 
