@@ -62,13 +62,19 @@ def _resolve_source_path(src, no_fetch: bool, cache_dir: Path) -> Path | None:
 
     Returns None if source cannot be resolved.
     """
+    if src.url.startswith("http://") and not src.url.startswith("https://"):
+        logging.warning(
+            "Source %s uses http:// (not HTTPS) — connection is insecure: %s",
+            src.id if hasattr(src, "id") else "unknown",
+            src.url,
+        )
     match src.url:
         case url if url.startswith("file://"):
-            file_path = Path(url.removeprefix("file://")).resolve()
-            if ".." in file_path.parts:
+            raw = Path(url.removeprefix("file://"))
+            if ".." in raw.parts:
                 logging.warning("Rejected file:// URL with path traversal: %s", url)
                 return None
-            return file_path
+            return raw.resolve()
         case url if not no_fetch:
             src_path, _ = fetch_to_cache(url, cache_dir, source_id=src.id)
             return src_path

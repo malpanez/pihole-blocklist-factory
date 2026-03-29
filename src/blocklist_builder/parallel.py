@@ -73,7 +73,11 @@ def _resolve_local_sources(sources: list[Source]) -> dict[str, Path]:
         if not src.enabled:
             continue
         url = src.url
-        src_path = Path(url.removeprefix("file://")) if url.startswith("file://") else Path(url)
+        raw_path = Path(url.removeprefix("file://")) if url.startswith("file://") else Path(url)
+        if url.startswith("file://") and ".." in raw_path.parts:
+            logging.warning("Rejected file:// URL with path traversal: %s", url)
+            continue
+        src_path = raw_path.resolve() if url.startswith("file://") else raw_path
         if src_path.exists():
             result[src.id] = src_path
     return result

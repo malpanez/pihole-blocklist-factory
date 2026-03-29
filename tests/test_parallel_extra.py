@@ -203,6 +203,18 @@ def test_parallel_process_all_sources_pool_failure(monkeypatch, tmp_path: Path) 
         assert f"domain{i}.com" in result[f"s{i}"][0]
 
 
+def test_resolve_local_sources_traversal_rejected() -> None:
+    class S:
+        def __init__(self, url: str, enabled: bool = True, id: str = "bad") -> None:
+            self.url = url
+            self.enabled = enabled
+            self.id = id
+
+    source = S(url="file:///../etc/passwd", enabled=True, id="bad")
+    result = parallel._resolve_local_sources([source])
+    assert result == {}
+
+
 def test_parallel_process_all_sources_worker_failure(monkeypatch, tmp_path: Path) -> None:
     """Falls back to local processing when a single worker fails."""
     files = {}
