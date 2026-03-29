@@ -29,7 +29,7 @@ Produce accurate, deduplicated, correctly-categorized blocklists from multiple s
 - [x] Fix stats double-counting: `total_lines` reports ~9.1M instead of ~4.5M — **Validated in Phase 1: Core Pipeline Bugs**
 - [x] Fix analyze pipeline: `_compute_discard_findings` always returns empty (discard_rate always 0%) — **Validated in Phase 2: Analyze Pipeline Fix**
 - [x] Remove silently-ignored profile fields: `include_sources`, `exclude_sources`, `strict`, `sensitive_domains` — **Validated in Phase 3: Profile Features Cleanup**
-- [ ] Implement HTTP conditional fetching (ETag/If-Modified-Since) to avoid redundant downloads
+- [x] Implement HTTP conditional fetching (ETag/If-Modified-Since) to avoid redundant downloads — **Validated in Phase 4: HTTP Conditional Fetching**
 - [ ] Consistent path traversal protection across all code paths
 - [ ] Fix CI/CD: `update.yml` never detects changes (dist/ gitignored), releases accumulate unboundedly
 - [ ] Code quality cleanup: YAML injection in firebog.py, env var at module scope, TLD regex, stub commands
@@ -91,4 +91,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-29 after Phase 3: Profile Features Cleanup complete*
+*Last updated: 2026-03-29 after Phase 4: HTTP Conditional Fetching complete*
