@@ -27,7 +27,7 @@ Produce accurate, deduplicated, correctly-categorized blocklists from multiple s
 - [x] Fix double-fetch bug: HTTP sources downloaded twice per build — **Validated in Phase 1: Core Pipeline Bugs**
 - [x] Remove dead code: `parallel_parse_and_sanitize` never called in production — **Validated in Phase 1: Core Pipeline Bugs**
 - [x] Fix stats double-counting: `total_lines` reports ~9.1M instead of ~4.5M — **Validated in Phase 1: Core Pipeline Bugs**
-- [ ] Fix analyze pipeline: `_compute_discard_findings` always returns empty (discard_rate always 0%)
+- [x] Fix analyze pipeline: `_compute_discard_findings` always returns empty (discard_rate always 0%) — **Validated in Phase 2: Analyze Pipeline Fix**
 - [ ] Remove silently-ignored profile fields: `include_sources`, `exclude_sources`, `strict`, `sensitive_domains`
 - [ ] Implement HTTP conditional fetching (ETag/If-Modified-Since) to avoid redundant downloads
 - [ ] Consistent path traversal protection across all code paths
@@ -91,4 +91,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-29 after Phase 1: Core Pipeline Bugs complete*
+*Last updated: 2026-03-29 after Phase 2: Analyze Pipeline Fix complete*
