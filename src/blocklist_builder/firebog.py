@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import requests
+import yaml
 
 from .types import Source
 
@@ -110,24 +111,26 @@ def sync_firebog(config_dir: Path, dry_run: bool = False) -> dict:
             )
             sources.append(src)
 
-    # Build YAML output
-    yaml_lines = [
-        "# Auto-generated from https://v.firebog.net/hosts/csv.txt",
-        "# DO NOT EDIT manually; regenerate with: blocklist-factory sync-firebog",
-        "",
-    ]
-    yaml_lines.append("sources:")
+    sources_data = []
     for src in sources:
-        yaml_lines.append(f"  - id: {src.id}")
-        yaml_lines.append(f'    name: "{src.name}"')
-        yaml_lines.append(f'    url: "{src.url}"')
-        yaml_lines.append(f"    category: {src.category}")
-        yaml_lines.append(f"    enabled: {str(src.enabled).lower()}")
+        entry: dict = {
+            "id": src.id,
+            "name": src.name,
+            "url": src.url,
+            "category": src.category,
+            "enabled": src.enabled,
+        }
         if src.notes:
-            yaml_lines.append(f'    notes: "{src.notes}"')
-        yaml_lines.append("")
+            entry["notes"] = src.notes
+        sources_data.append(entry)
 
-    yaml_content = "\n".join(yaml_lines)
+    header = (
+        "# Auto-generated from https://v.firebog.net/hosts/csv.txt\n"
+        "# DO NOT EDIT manually; regenerate with: blocklist-factory sync-firebog\n\n"
+    )
+    yaml_content = header + yaml.dump(
+        {"sources": sources_data}, default_flow_style=False, allow_unicode=True
+    )
 
     output_file = config_dir / "sources.firebog.yml"
     if not dry_run:

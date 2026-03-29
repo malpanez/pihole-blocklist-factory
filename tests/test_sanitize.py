@@ -48,3 +48,9 @@ def test_sanitize_idna_failure():
     """Test IDNA encoding failure branch."""
     s = sanitize_domain("\ud800.com")
     assert s.reason == "invalid"
+
+
+def test_sanitize_reject_numeric_tld():
+    """Test that numeric-only TLDs are rejected."""
+    s = sanitize_domain("foo.123")
+    assert s.reason == "not_fqdn"

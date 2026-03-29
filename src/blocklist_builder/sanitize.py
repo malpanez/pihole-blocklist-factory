@@ -7,7 +7,7 @@ from typing import Final, Literal
 
 # Compile regex patterns once with optimal flags
 _DOMAIN_RE: Final = re.compile(
-    r"^(?=.{1,253}$)(?!-)([a-z0-9-]{1,63}(?<!-)\.)+[a-z0-9-]{2,63}$",
+    r"^(?=.{1,253}$)(?!-)([a-z0-9-]{1,63}(?<!-)\.)+[a-z]{2,63}$",
     re.ASCII,
 )
 _IPV4_RE: Final = re.compile(r"^(\d{1,3}\.){3}\d{1,3}$", re.ASCII)
