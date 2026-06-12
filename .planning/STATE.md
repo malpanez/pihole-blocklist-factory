@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 Phase: 07
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-06-12 - Completed quick task 260612-eki: repo-wide optimization (baseline, perf/memory, parsing, security/CI)
+Last activity: 2026-06-12 - Completed quick task 260612-hxh: mypy strict gate + profile output dedup (todos cleared)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -90,14 +90,14 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- [Adopt mypy strict - fix errors, add dep, CI gate](./todos/pending/2026-06-12-adopt-mypy-strict-fix-errors-add-dep-ci-gate.md) (tooling)
-- [Deduplicate byte-identical profile outputs (symlinks or manifest)](./todos/pending/2026-06-12-phase-3-profile-redundancy-symlinks-or-manifest-until-profil.md) (general)
+None — both 2026-06-12 todos completed via quick task 260612-hxh.
 
 ### Quick Tasks Completed
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260612-eki | Repo-wide optimization: baseline metrics, perf/memory, parsing fixes, security/CI hardening | 2026-06-12 | 5d04550 | [260612-eki-repo-wide-optimization-baseline-metrics-](./quick/260612-eki-repo-wide-optimization-baseline-metrics-/) |
+| 260612-hxh | mypy strict adoption (0 errors, blocking CI gate) + profile output dedup (symlinks + manifest) | 2026-06-12 | e9ee762 | [260612-hxh-fix-pending-todos-mypy-strict-adoption-p](./quick/260612-hxh-fix-pending-todos-mypy-strict-adoption-p/) |
 
 ### Blockers/Concerns
 
