@@ -145,7 +145,9 @@ def analyze_build(dist_dir: Path, settings: Settings, output_file: Path | None =
 
     # Compute findings
     source_stats_data = _load_source_stats(dist_dir)
-    discard_findings = _compute_discard_findings(source_stats_data, source_map) if source_stats_data else []
+    discard_findings = (
+        _compute_discard_findings(source_stats_data, source_map) if source_stats_data else []
+    )
     overlap_findings, overlap_2, overlap_3_plus = _compute_overlap_findings(provenance)
 
     all_findings = discard_findings + overlap_findings

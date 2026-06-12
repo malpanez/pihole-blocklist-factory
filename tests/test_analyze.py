@@ -3,7 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from blocklist_builder.analyze import analyze_build
+from blocklist_builder.analyze import (
+    _compute_discard_findings,
+    _load_source_stats,
+    analyze_build,
+)
 from blocklist_builder.config import Policies, ProfilesConfig, Settings
 from blocklist_builder.types import Profile, Source
 
@@ -95,9 +99,6 @@ def test_analyze_build_invalid_stats(tmp_path: Path) -> None:
     (dist_dir / "reports" / "stats.json").write_text("{", encoding="utf-8")
     result = analyze_build(dist_dir, _settings())
     assert "error" in result
-
-
-from blocklist_builder.analyze import _compute_discard_findings, _load_source_stats
 
 
 def test_compute_discard_findings_fires() -> None:

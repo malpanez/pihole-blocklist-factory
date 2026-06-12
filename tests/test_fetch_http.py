@@ -87,17 +87,19 @@ def test_fetch_to_cache_http_304_reuses_cache(tmp_path: Path, monkeypatch) -> No
     sidecar = cache_dir / f"{key}.json"
     cache_file.write_text("original\n", encoding="utf-8")
     sidecar.write_text(
-        json.dumps({
-            "source_id": "s1",
-            "hash": "abc",
-            "size_bytes": 9,
-            "line_count": 1,
-            "parsed_ok": 0,
-            "sanitized_ok": 0,
-            "etag": '"abc123"',
-            "last_modified": "Wed, 01 Jan 2025 00:00:00 GMT",
-            "fetch_timestamp": 1.0,
-        }),
+        json.dumps(
+            {
+                "source_id": "s1",
+                "hash": "abc",
+                "size_bytes": 9,
+                "line_count": 1,
+                "parsed_ok": 0,
+                "sanitized_ok": 0,
+                "etag": '"abc123"',
+                "last_modified": "Wed, 01 Jan 2025 00:00:00 GMT",
+                "fetch_timestamp": 1.0,
+            }
+        ),
         encoding="utf-8",
     )
 
@@ -124,17 +126,19 @@ def test_fetch_to_cache_http_200_updates_cache(tmp_path: Path, monkeypatch) -> N
     sidecar = cache_dir / f"{key}.json"
     cache_file.write_text("original\n", encoding="utf-8")
     sidecar.write_text(
-        json.dumps({
-            "source_id": "s1",
-            "hash": "abc",
-            "size_bytes": 9,
-            "line_count": 1,
-            "parsed_ok": 0,
-            "sanitized_ok": 0,
-            "etag": '"abc123"',
-            "last_modified": "Wed, 01 Jan 2025 00:00:00 GMT",
-            "fetch_timestamp": 1.0,
-        }),
+        json.dumps(
+            {
+                "source_id": "s1",
+                "hash": "abc",
+                "size_bytes": 9,
+                "line_count": 1,
+                "parsed_ok": 0,
+                "sanitized_ok": 0,
+                "etag": '"abc123"',
+                "last_modified": "Wed, 01 Jan 2025 00:00:00 GMT",
+                "fetch_timestamp": 1.0,
+            }
+        ),
         encoding="utf-8",
     )
 
@@ -155,17 +159,19 @@ def test_fetch_to_cache_http_304_missing_cache_file(tmp_path: Path, monkeypatch)
     key = fetch._cache_key(url)
     sidecar = cache_dir / f"{key}.json"
     sidecar.write_text(
-        json.dumps({
-            "source_id": "s1",
-            "hash": "abc",
-            "size_bytes": 9,
-            "line_count": 1,
-            "parsed_ok": 0,
-            "sanitized_ok": 0,
-            "etag": '"abc123"',
-            "last_modified": "Wed, 01 Jan 2025 00:00:00 GMT",
-            "fetch_timestamp": 1.0,
-        }),
+        json.dumps(
+            {
+                "source_id": "s1",
+                "hash": "abc",
+                "size_bytes": 9,
+                "line_count": 1,
+                "parsed_ok": 0,
+                "sanitized_ok": 0,
+                "etag": '"abc123"',
+                "last_modified": "Wed, 01 Jan 2025 00:00:00 GMT",
+                "fetch_timestamp": 1.0,
+            }
+        ),
         encoding="utf-8",
     )
 

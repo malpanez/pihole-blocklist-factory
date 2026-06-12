@@ -80,6 +80,7 @@ def test_sync_firebog_writes_file(tmp_path: Path, monkeypatch) -> None:
     assert out.exists()
     assert "sources:" in out.read_text(encoding="utf-8")
     import yaml as _yaml
+
     parsed = _yaml.safe_load(out.read_text(encoding="utf-8"))
     assert len(parsed["sources"]) == 1
     assert parsed["sources"][0]["id"].startswith("firebog_ads_")

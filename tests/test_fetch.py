@@ -48,4 +48,3 @@ def test_fetch_to_cache_traversal_rejected(tmp_path: Path) -> None:
 
 def test_compute_hash_not_cached() -> None:
     assert not hasattr(_compute_hash, "cache_info")
-
