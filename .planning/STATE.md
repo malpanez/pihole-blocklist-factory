@@ -90,7 +90,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+- [Adopt mypy strict - fix errors, add dep, CI gate](./todos/pending/2026-06-12-adopt-mypy-strict-fix-errors-add-dep-ci-gate.md) (tooling)
+- [Deduplicate byte-identical profile outputs (symlinks or manifest)](./todos/pending/2026-06-12-phase-3-profile-redundancy-symlinks-or-manifest-until-profil.md) (general)
 
 ### Quick Tasks Completed
 
