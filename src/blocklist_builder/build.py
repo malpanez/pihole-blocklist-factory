@@ -6,7 +6,8 @@ import logging
 import os
 import re
 from collections import Counter, defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from collections.abc import Set as AbstractSet
 from functools import cache
 from pathlib import Path
 from typing import Any, Final
@@ -17,6 +18,7 @@ from .parallel import parallel_fetch_sources, parallel_process_all_sources
 from .regex import generate_regex_patterns, write_regex_file
 from .report import Stats, write_reports
 from .sanitize import sanitize_domain
+from .types import Category
 
 # Configuration constants
 _ENCODING: Final = "utf-8"
@@ -61,7 +63,7 @@ def _resolve_all_source_paths(
     settings: Settings,
     no_fetch: bool,
     cache_dir: Path,
-    discarded: Counter,
+    discarded: Counter[str],
     source_stats: dict[str, dict[str, int]],
     repo_root: Path | None = None,
 ) -> dict[str, Path]:
@@ -101,7 +103,7 @@ def _write_domain_lines(path: Path, domains: Sequence[str]) -> None:
         f.writelines(f"{d}\n" for d in domains)
 
 
-def _write_categories(dist_dir: Path, chosen: dict[str, str]) -> None:
+def _write_categories(dist_dir: Path, chosen: Mapping[str, str]) -> None:
     """Write per-category files."""
     cats: dict[str, list[str]] = defaultdict(list)
     for d, c in chosen.items():
@@ -110,7 +112,7 @@ def _write_categories(dist_dir: Path, chosen: dict[str, str]) -> None:
         _write_domain_lines(dist_dir / "categories" / f"{c}.txt", sorted(set(ds)))
 
 
-def _write_profiles(dist_dir: Path, chosen: dict[str, str], settings: Settings) -> None:
+def _write_profiles(dist_dir: Path, chosen: Mapping[str, str], settings: Settings) -> None:
     """Write profile files (by include_categories)."""
     for pname, pconf in settings.profiles.by_name.items():
         if pconf.include_categories:
@@ -126,11 +128,11 @@ def _collect_domains(
     cache_dir: Path,
     drop_patterns: Sequence[re.Pattern[str]],
     allow: frozenset[str],
-    discarded: Counter,
+    discarded: Counter[str],
     source_stats: dict[str, dict[str, int]],
     debug_log: list[str] | None = None,
     repo_root: Path | None = None,
-) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
+) -> tuple[dict[str, set[Category]], dict[str, set[str]]]:
     """Collect and validate domains from all sources using source-level parallelism.
 
     Each source is processed in a separate worker (parse + sanitize + allowlist filter).
@@ -138,7 +140,7 @@ def _collect_domains(
     Returns:
         (domain_to_categories, domain_to_sources)
     """
-    domain_to_categories: dict[str, set[str]] = defaultdict(set)
+    domain_to_categories: dict[str, set[Category]] = defaultdict(set)
     domain_to_sources: dict[str, set[str]] = defaultdict(set)
 
     # Resolve all source paths in the main process
@@ -171,7 +173,9 @@ def _collect_domains(
     return domain_to_categories, domain_to_sources
 
 
-def _add_deny_extras(domain_to_categories: dict[str, set[str]], deny_extra: frozenset[str]) -> None:
+def _add_deny_extras(
+    domain_to_categories: dict[str, set[Category]], deny_extra: frozenset[str]
+) -> None:
     """Add explicitly denied domains to the category dict."""
     for d in deny_extra:
         san = sanitize_domain(d)
@@ -311,7 +315,7 @@ def build(
     debug_enabled = os.environ.get("BLOCKLIST_DEBUG", "").lower() in {"1", "true", "yes"}
     debug_log: list[str] | None = [] if debug_enabled else None
 
-    discarded = Counter()
+    discarded: Counter[str] = Counter()
     source_stats: dict[str, dict[str, int]] = {}
     domain_to_categories, domain_to_sources = _collect_domains(
         settings,
@@ -375,8 +379,8 @@ def build(
 
 def _write_allowlist(
     dist_dir: Path,
-    allow: frozenset[str],
-    core_domains: frozenset[str],
+    allow: AbstractSet[str],
+    core_domains: AbstractSet[str],
 ) -> None:
     """Write consolidated allowlist for Pi-hole v6 Antigravity.
 

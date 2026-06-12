@@ -5,23 +5,27 @@ from __future__ import annotations
 import contextlib
 import json
 from pathlib import Path
+from typing import Any
 
 from .config import Settings
+from .types import Source
 
 
-def _load_aggregates_and_marginal(dist_dir: Path) -> tuple[dict, dict] | tuple[None, None]:
+def _load_aggregates_and_marginal(
+    dist_dir: Path,
+) -> tuple[dict[str, Any], dict[str, Any]] | tuple[None, None]:
     """Load provenance_aggregates.json and marginal.json."""
     aggregates_file = dist_dir / "reports" / "provenance_aggregates.json"
     if not aggregates_file.exists():
         return None, None
 
     try:
-        aggregates = json.loads(aggregates_file.read_text(encoding="utf-8"))
+        aggregates: dict[str, Any] = json.loads(aggregates_file.read_text(encoding="utf-8"))
     except Exception:
         return None, None
 
     marginal_file = dist_dir / "reports" / "marginal.json"
-    marginal_data = {}
+    marginal_data: dict[str, Any] = {}
     if marginal_file.exists():
         with contextlib.suppress(Exception):
             marginal_data = json.loads(marginal_file.read_text(encoding="utf-8"))
@@ -30,13 +34,13 @@ def _load_aggregates_and_marginal(dist_dir: Path) -> tuple[dict, dict] | tuple[N
 
 
 def _compute_source_metrics(
-    aggregates: dict, source_map: dict, marginal_data: dict
-) -> dict[str, dict]:
+    aggregates: dict[str, Any], source_map: dict[str, Source], marginal_data: dict[str, Any]
+) -> dict[str, dict[str, Any]]:
     """Compute metrics (contributions, unique domains, overlap) per source.
 
     Single dict lookup per source against pre-computed per-source aggregates.
     """
-    metrics = {}
+    metrics: dict[str, dict[str, Any]] = {}
     per_source = aggregates.get("per_source", {})
 
     for src_id in source_map:
@@ -62,12 +66,12 @@ def _compute_source_metrics(
 
 
 def _categorize_contributions(
-    metrics: dict, source_map: dict, total_domains: int
-) -> tuple[list, list, list]:
+    metrics: dict[str, dict[str, Any]], source_map: dict[str, Source], total_domains: int
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     """Categorize sources as high/moderate/low value."""
-    high_value = []
-    moderate_value = []
-    low_value = []
+    high_value: list[dict[str, Any]] = []
+    moderate_value: list[dict[str, Any]] = []
+    low_value: list[dict[str, Any]] = []
 
     for src_id, metric in metrics.items():
         src = source_map.get(src_id)
@@ -97,7 +101,11 @@ def _categorize_contributions(
 
 
 def _write_recommend_report(
-    output_file: Path, total_domains: int, high_value: list, moderate_value: list, source_map: dict
+    output_file: Path,
+    total_domains: int,
+    high_value: list[dict[str, Any]],
+    moderate_value: list[dict[str, Any]],
+    source_map: dict[str, Source],
 ) -> None:
     """Write recommendations markdown report."""
     md_lines = [
@@ -131,7 +139,7 @@ def _write_recommend_report(
     # Sort by category and value
     from collections import defaultdict
 
-    by_cat = defaultdict(list)
+    by_cat: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
     for contrib in high_value + moderate_value:
         by_cat[contrib["category"]].append(contrib)
 
@@ -173,7 +181,7 @@ def _write_recommend_report(
 
 def compute_recommendations(
     dist_dir: Path, settings: Settings, output_file: Path | None = None
-) -> dict:
+) -> dict[str, Any]:
     """Compute marginal contribution and overlap per source.
 
     Generates dist/reports/recommend.md with:
@@ -186,7 +194,7 @@ def compute_recommendations(
     """
     aggregates, marginal_data = _load_aggregates_and_marginal(dist_dir)
 
-    if aggregates is None:
+    if aggregates is None or marginal_data is None:
         return {"error": "No provenance_aggregates.json found. Run build first."}
 
     source_map = {s.id: s for s in settings.sources}

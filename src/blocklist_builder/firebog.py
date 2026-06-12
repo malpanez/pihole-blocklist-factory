@@ -6,11 +6,12 @@ import csv
 import io
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, cast
 
 import requests
 import yaml
 
-from .types import Source
+from .types import Category, Source
 
 
 @dataclass
@@ -68,7 +69,7 @@ def fetch_firebog_csv() -> list[FirebogEntry]:
     return entries
 
 
-def sync_firebog(config_dir: Path, dry_run: bool = False) -> dict:
+def sync_firebog(config_dir: Path, dry_run: bool = False) -> dict[str, Any]:
     """Download Firebog catalog and generate config/sources.firebog.yml.
 
     Merges with existing config/sources.yml if present.
@@ -90,7 +91,7 @@ def sync_firebog(config_dir: Path, dry_run: bool = False) -> dict:
     entries = secure_entries
 
     # Group by category
-    by_category = {}
+    by_category: dict[str, list[FirebogEntry]] = {}
     for entry in entries:
         cat = entry.category or "uncategorized"
         if cat not in by_category:
@@ -109,7 +110,7 @@ def sync_firebog(config_dir: Path, dry_run: bool = False) -> dict:
                 id=source_id,
                 name=entry.title,
                 url=entry.url,
-                category=cat,  # type: ignore
+                category=cast(Category, cat),
                 enabled=True,
                 tier="stable",
                 license=None,
@@ -117,9 +118,9 @@ def sync_firebog(config_dir: Path, dry_run: bool = False) -> dict:
             )
             sources.append(src)
 
-    sources_data = []
+    sources_data: list[dict[str, Any]] = []
     for src in sources:
-        entry: dict = {
+        source_entry: dict[str, Any] = {
             "id": src.id,
             "name": src.name,
             "url": src.url,
@@ -127,8 +128,8 @@ def sync_firebog(config_dir: Path, dry_run: bool = False) -> dict:
             "enabled": src.enabled,
         }
         if src.notes:
-            entry["notes"] = src.notes
-        sources_data.append(entry)
+            source_entry["notes"] = src.notes
+        sources_data.append(source_entry)
 
     header = (
         "# Auto-generated from https://v.firebog.net/hosts/csv.txt\n"
