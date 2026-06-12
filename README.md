@@ -196,6 +196,15 @@ src/blocklist_builder/
 - [ ] Churn report (delta vs previous build)
 - [ ] Release channels (stable/edge)
 
+## Known limitations
+
+- Domains containing underscores (e.g. `tracker_metrics.example.com`) are rejected by
+  the validator. Underscores are technically invalid in hostnames (RFC 952/1123), but
+  they do appear in some tracking lists; such entries are counted under
+  `sanitize_not_fqdn` and excluded from the output.
+- Wildcard entries (`*.example.com`) are not expanded or mapped to their base domain;
+  they are counted under `parse_wildcard` and excluded from the output.
+
 ## License
 
 - Code: MIT (see `LICENSE`)

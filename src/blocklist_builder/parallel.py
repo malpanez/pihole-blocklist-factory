@@ -125,22 +125,26 @@ def _process_source_file_worker(
     with open(file_path_str, encoding="utf-8", errors="ignore") as f:
         for raw in f:
             line_count += 1
-            domain, reason = classify_line(raw, patterns)
-            if reason != "ok" or not domain:
+            domains, reason = classify_line(raw, patterns)
+            if reason != "ok":
                 key = f"parse_{reason}"
                 discarded[key] = discarded.get(key, 0) + 1
                 continue
-            parsed_ok += 1
-            san = sanitize_domain(domain)
-            if san.reason == "ok" and san.domain:
-                sanitized_ok += 1
-                if allow and san.domain in allow:
-                    allowlisted += 1
+            for domain in domains:
+                if domain.startswith("*."):
+                    discarded["parse_wildcard"] = discarded.get("parse_wildcard", 0) + 1
+                    continue
+                parsed_ok += 1
+                san = sanitize_domain(domain)
+                if san.reason == "ok" and san.domain:
+                    sanitized_ok += 1
+                    if allow and san.domain in allow:
+                        allowlisted += 1
+                    else:
+                        valid.append(san.domain)
                 else:
-                    valid.append(san.domain)
-            else:
-                key = f"sanitize_{san.reason}"
-                discarded[key] = discarded.get(key, 0) + 1
+                    key = f"sanitize_{san.reason}"
+                    discarded[key] = discarded.get(key, 0) + 1
 
     stats = dict(discarded)
     stats["lines"] = line_count

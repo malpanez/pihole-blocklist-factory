@@ -108,6 +108,16 @@ def test_process_source_file_worker_sanitize_discard(tmp_path: Path) -> None:
     assert stats["sanitize_ok"] == 1
 
 
+def test_process_source_file_worker_wildcard_and_multihost(tmp_path: Path) -> None:
+    source = tmp_path / "list.txt"
+    source.write_text("*.wild.example.com\n0.0.0.0 a.example.com b.example.com\n", encoding="utf-8")
+    valid, stats = parallel._process_source_file_worker((str(source), [], frozenset()))
+    assert set(valid) == {"a.example.com", "b.example.com"}
+    assert stats["parse_wildcard"] == 1
+    assert stats["parse_ok"] == 2
+    assert stats["lines"] == 2
+
+
 def test_process_source_file_worker(tmp_path: Path) -> None:
     source = tmp_path / "list.txt"
     source.write_text("# comment\nexample.com\n0.0.0.0 ads.example.com\nbad\n", encoding="utf-8")

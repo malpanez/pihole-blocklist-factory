@@ -54,3 +54,30 @@ def test_sanitize_reject_numeric_tld():
     """Test that numeric-only TLDs are rejected."""
     s = sanitize_domain("foo.123")
     assert s.reason == "not_fqdn"
+
+
+def test_sanitize_punycode_label():
+    """Pre-encoded punycode labels with an ASCII TLD pass."""
+    s = sanitize_domain("xn--80ak6aa92e.com")
+    assert s.reason == "ok"
+    assert s.domain == "xn--80ak6aa92e.com"
+
+
+def test_sanitize_punycode_tld():
+    """Unicode domains with IDN TLDs encode to punycode TLDs and pass."""
+    s = sanitize_domain("пример.рф")
+    assert s.reason == "ok"
+    assert s.domain == "xn--e1afmkfd.xn--p1ai"
+
+
+def test_sanitize_punycode_tld_preencoded():
+    """Pre-encoded punycode TLDs pass directly."""
+    s = sanitize_domain("example.xn--p1ai")
+    assert s.reason == "ok"
+    assert s.domain == "example.xn--p1ai"
+
+
+def test_sanitize_reject_garbage_tlds():
+    """Numeric and hyphen-leading non-punycode TLDs remain rejected."""
+    assert sanitize_domain("foo.42").reason == "not_fqdn"
+    assert sanitize_domain("foo.a1b").reason == "not_fqdn"
