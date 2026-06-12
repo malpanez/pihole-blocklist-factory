@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 Phase: 07
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-03-29
+Last activity: 2026-06-12 - Completed quick task 260612-eki: repo-wide optimization (baseline, perf/memory, parsing, security/CI)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -91,6 +91,12 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 None yet.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260612-eki | Repo-wide optimization: baseline metrics, perf/memory, parsing fixes, security/CI hardening | 2026-06-12 | 5d04550 | [260612-eki-repo-wide-optimization-baseline-metrics-](./quick/260612-eki-repo-wide-optimization-baseline-metrics-/) |
 
 ### Blockers/Concerns
 
