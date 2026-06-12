@@ -1,7 +1,7 @@
 .PHONY: sync lint fmt test build
 
 sync:
-	uv sync --all-extras
+	uv sync
 
 lint:
 	uv run ruff check .

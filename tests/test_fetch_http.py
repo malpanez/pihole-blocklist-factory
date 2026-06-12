@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 import blocklist_builder.fetch as fetch
 
 
@@ -11,15 +13,22 @@ class _Resp:
         self.text = text
         self.status_code = status_code
         self.headers = headers or {}
+        self.encoding = "utf-8"
 
     def raise_for_status(self) -> None:
-        return None
+        if self.status_code >= 400:
+            raise fetch.requests.HTTPError(f"{self.status_code} error", response=self)
+
+    def iter_content(self, chunk_size: int = 65536):
+        data = self.text.encode("utf-8")
+        for i in range(0, len(data), chunk_size):
+            yield data[i : i + chunk_size]
 
 
 def test_fetch_to_cache_http_retries(tmp_path: Path, monkeypatch) -> None:
     calls = {"n": 0}
 
-    def fake_get(_url: str, timeout: int = 30, headers=None):
+    def fake_get(_url: str, timeout: int = 30, headers=None, stream: bool = False):
         calls["n"] += 1
         if calls["n"] < 2:
             raise fetch.requests.RequestException("boom")
@@ -37,7 +46,7 @@ def test_fetch_to_cache_http_retries(tmp_path: Path, monkeypatch) -> None:
 
 
 def test_fetch_http_raises_after_retries(monkeypatch) -> None:
-    def fake_get(_url: str, timeout: int = 30, headers=None):
+    def fake_get(_url: str, timeout: int = 30, headers=None, stream: bool = False):
         raise fetch.requests.RequestException("boom")
 
     monkeypatch.setattr(fetch.requests, "get", fake_get)
@@ -50,6 +59,97 @@ def test_fetch_http_raises_after_retries(monkeypatch) -> None:
     raise AssertionError("Expected RequestException")
 
 
+def test_fetch_http_4xx_not_retried(monkeypatch) -> None:
+    calls = {"n": 0}
+
+    def fake_get(_url: str, timeout: int = 30, headers=None, stream: bool = False):
+        calls["n"] += 1
+        return _Resp("not found", status_code=404)
+
+    monkeypatch.setattr(fetch.requests, "get", fake_get)
+    monkeypatch.setattr(fetch.time, "sleep", lambda _t: None)
+
+    with pytest.raises(fetch.requests.HTTPError):
+        fetch._fetch_http("http://example.com/missing.txt", timeout_s=1)
+    assert calls["n"] == 1  # no retries on client errors
+
+
+def test_fetch_http_5xx_retried(monkeypatch) -> None:
+    calls = {"n": 0}
+
+    def fake_get(_url: str, timeout: int = 30, headers=None, stream: bool = False):
+        calls["n"] += 1
+        if calls["n"] < 2:
+            return _Resp("server error", status_code=500)
+        return _Resp("recovered\n")
+
+    monkeypatch.setattr(fetch.requests, "get", fake_get)
+    monkeypatch.setattr(fetch.time, "sleep", lambda _t: None)
+
+    text, _etag, _lm = fetch._fetch_http("http://example.com/list.txt", timeout_s=1)
+    assert text == "recovered\n"
+    assert calls["n"] == 2
+
+
+def test_fetch_http_5xx_exhausts_retries(monkeypatch) -> None:
+    calls = {"n": 0}
+
+    def fake_get(_url: str, timeout: int = 30, headers=None, stream: bool = False):
+        calls["n"] += 1
+        return _Resp("server error", status_code=503)
+
+    monkeypatch.setattr(fetch.requests, "get", fake_get)
+    monkeypatch.setattr(fetch.time, "sleep", lambda _t: None)
+
+    with pytest.raises(fetch.requests.HTTPError):
+        fetch._fetch_http("http://example.com/list.txt", timeout_s=1)
+    assert calls["n"] == 3
+
+
+def test_fetch_http_cap_content_length(monkeypatch) -> None:
+    calls = {"n": 0}
+
+    def fake_get(_url: str, timeout: int = 30, headers=None, stream: bool = False):
+        calls["n"] += 1
+        return _Resp("x", headers={"Content-Length": str(fetch._MAX_DOWNLOAD_BYTES + 1)})
+
+    monkeypatch.setattr(fetch.requests, "get", fake_get)
+    monkeypatch.setattr(fetch.time, "sleep", lambda _t: None)
+
+    with pytest.raises(fetch.DownloadTooLargeError, match="Content-Length"):
+        fetch._fetch_http("http://example.com/huge.txt", timeout_s=1)
+    assert calls["n"] == 1  # cap violations are never retried
+
+
+def test_fetch_http_cap_streamed_body(monkeypatch) -> None:
+    calls = {"n": 0}
+
+    def fake_get(_url: str, timeout: int = 30, headers=None, stream: bool = False):
+        calls["n"] += 1
+        # No Content-Length header — cap must trip while streaming
+        return _Resp("a" * 64)
+
+    monkeypatch.setattr(fetch.requests, "get", fake_get)
+    monkeypatch.setattr(fetch.time, "sleep", lambda _t: None)
+    monkeypatch.setattr(fetch, "_MAX_DOWNLOAD_BYTES", 10)
+
+    with pytest.raises(fetch.DownloadTooLargeError, match="streamed"):
+        fetch._fetch_http("http://example.com/lying.txt", timeout_s=1)
+    assert calls["n"] == 1
+
+
+def test_fetch_http_bogus_encoding_falls_back(monkeypatch) -> None:
+    def fake_get(_url: str, timeout: int = 30, headers=None, stream: bool = False):
+        resp = _Resp("data\n")
+        resp.encoding = "definitely-not-a-codec"
+        return resp
+
+    monkeypatch.setattr(fetch.requests, "get", fake_get)
+
+    text, _etag, _lm = fetch._fetch_http("http://example.com/list.txt", timeout_s=1)
+    assert text == "data\n"
+
+
 def test_load_metadata_missing_and_invalid(tmp_path: Path) -> None:
     missing = tmp_path / "missing.json"
     assert fetch._load_metadata(missing) is None
@@ -60,7 +160,7 @@ def test_load_metadata_missing_and_invalid(tmp_path: Path) -> None:
 
 
 def test_fetch_to_cache_http_first_fetch_saves_headers(tmp_path: Path, monkeypatch) -> None:
-    def fake_get(_url: str, timeout: int = 30, headers=None):
+    def fake_get(_url: str, timeout: int = 30, headers=None, stream: bool = False):
         return _Resp(
             "domain1\n",
             status_code=200,
@@ -105,7 +205,7 @@ def test_fetch_to_cache_http_304_reuses_cache(tmp_path: Path, monkeypatch) -> No
 
     captured_headers: dict = {}
 
-    def fake_get(_url: str, timeout: int = 30, headers=None):
+    def fake_get(_url: str, timeout: int = 30, headers=None, stream: bool = False):
         captured_headers.update(headers or {})
         return _Resp("", status_code=304, headers={"ETag": '"abc123"'})
 
@@ -142,7 +242,7 @@ def test_fetch_to_cache_http_200_updates_cache(tmp_path: Path, monkeypatch) -> N
         encoding="utf-8",
     )
 
-    def fake_get(_url: str, timeout: int = 30, headers=None):
+    def fake_get(_url: str, timeout: int = 30, headers=None, stream: bool = False):
         return _Resp("updated\n", status_code=200, headers={"ETag": '"def456"'})
 
     monkeypatch.setattr(fetch.requests, "get", fake_get)
@@ -175,7 +275,7 @@ def test_fetch_to_cache_http_304_missing_cache_file(tmp_path: Path, monkeypatch)
         encoding="utf-8",
     )
 
-    def fake_get(_url: str, timeout: int = 30, headers=None):
+    def fake_get(_url: str, timeout: int = 30, headers=None, stream: bool = False):
         return _Resp("recovered\n", status_code=200, headers={})
 
     monkeypatch.setattr(fetch.requests, "get", fake_get)

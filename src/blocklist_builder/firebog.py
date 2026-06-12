@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import csv
+import io
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -35,22 +37,17 @@ def fetch_firebog_csv() -> list[FirebogEntry]:
     resp = requests.get(url, timeout=30)
     resp.raise_for_status()
 
-    lines = resp.text.strip().split("\n")
     entries = []
 
-    for line in lines:
-        if not line.strip():
-            continue
-        # Parse CSV: remove quotes and split
-        parts = [p.strip().strip('"') for p in line.split('","')]
+    for parts in csv.reader(io.StringIO(resp.text)):
         if len(parts) < 5:
             continue
 
-        category = parts[0]
-        status = parts[1]
-        home = parts[2]
-        title = parts[3]
-        url = parts[4]
+        category = parts[0].strip()
+        status = parts[1].strip()
+        home = parts[2].strip()
+        title = parts[3].strip()
+        url = parts[4].strip()
 
         # Only include "tick" (stable) entries
         if status != "tick":
@@ -82,6 +79,15 @@ def sync_firebog(config_dir: Path, dry_run: bool = False) -> dict:
     print("Fetching Firebog catalog...")
     entries = fetch_firebog_csv()
     print(f"  Found {len(entries)} blocklists in Firebog")
+
+    # Enforce https:// on catalog URLs (skip insecure entries)
+    secure_entries = []
+    for entry in entries:
+        if not entry.url.startswith("https://"):
+            print(f"  ⚠ Skipping non-https Firebog entry: {entry.url}")
+            continue
+        secure_entries.append(entry)
+    entries = secure_entries
 
     # Group by category
     by_category = {}

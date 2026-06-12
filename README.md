@@ -32,7 +32,7 @@ Production-grade tooling to build, sanitize, and distribute custom **Pi-hole v6*
 git clone https://github.com/malpanez/pihole-blocklist-factory.git
 cd pihole-blocklist-factory
 
-uv sync --all-extras
+uv sync
 
 uv run ruff check .
 uv run ruff format .
@@ -153,7 +153,6 @@ curl "http://pihole.local/api/adlists" \
 
 - **CI**: lint + tests + coverage on every push/PR.
 - **Build Lists**: manual + weekly/monthly schedules. Generates `dist/` and publishes a GitHub Release with the `.txt` assets.
-- **Update**: manual only (template for future PR-based updates).
 
 ## Download lists (Releases)
 
@@ -239,7 +238,7 @@ Herramienta de producción para construir, sanitizar y distribuir listas persona
 git clone https://github.com/malpanez/pihole-blocklist-factory.git
 cd pihole-blocklist-factory
 
-uv sync --all-extras
+uv sync
 uv run ruff check .
 uv run ruff format .
 uv run pytest
@@ -257,7 +256,6 @@ uv run blocklist-factory build --json
 
 - **CI**: lint + tests + coverage en cada push/PR.
 - **Build Lists**: manual + cron semanal/mensual. Genera `dist/` y publica Releases con assets `.txt`.
-- **Update**: solo manual (plantilla futura).
 
 ## Descarga de listas (Releases)
 

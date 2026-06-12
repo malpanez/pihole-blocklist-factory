@@ -63,8 +63,11 @@ def _resolve_all_source_paths(
     cache_dir: Path,
     discarded: Counter,
     source_stats: dict[str, dict[str, int]],
+    repo_root: Path | None = None,
 ) -> dict[str, Path]:
     """Resolve file paths for all enabled sources (parallel fetch when enabled).
+
+    Local-path sources must resolve under repo_root (fail closed otherwise).
 
     Returns:
         Dict of source_id -> resolved file path (only for sources that resolved successfully).
@@ -78,7 +81,7 @@ def _resolve_all_source_paths(
                 src.url,
             )
 
-    resolved = parallel_fetch_sources(enabled, cache_dir, no_fetch=no_fetch)
+    resolved = parallel_fetch_sources(enabled, cache_dir, no_fetch=no_fetch, repo_root=repo_root)
 
     source_files: dict[str, Path] = {}
     for src in enabled:
@@ -126,6 +129,7 @@ def _collect_domains(
     discarded: Counter,
     source_stats: dict[str, dict[str, int]],
     debug_log: list[str] | None = None,
+    repo_root: Path | None = None,
 ) -> tuple[dict[str, set[str]], dict[str, set[str]]]:
     """Collect and validate domains from all sources using source-level parallelism.
 
@@ -138,7 +142,9 @@ def _collect_domains(
     domain_to_sources: dict[str, set[str]] = defaultdict(set)
 
     # Resolve all source paths in the main process
-    source_files = _resolve_all_source_paths(settings, no_fetch, cache_dir, discarded, source_stats)
+    source_files = _resolve_all_source_paths(
+        settings, no_fetch, cache_dir, discarded, source_stats, repo_root=repo_root
+    )
 
     # Process all sources in parallel (one worker per source)
     results = parallel_process_all_sources(source_files, drop_patterns, allow)
@@ -316,6 +322,7 @@ def build(
         discarded,
         source_stats,
         debug_log=debug_log,
+        repo_root=repo_root,
     )
 
     # Force deny extras

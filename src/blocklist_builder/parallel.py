@@ -32,8 +32,13 @@ def get_optimal_workers() -> int:
     return max(1, cpu_count() * 3 // 4)
 
 
-def _resolve_local_sources(sources: list[Source], cache_dir: Path) -> dict[str, Path | None]:
-    """Resolve source paths for no-fetch mode (local files and previously cached fetches)."""
+def _resolve_local_sources(
+    sources: list[Source], cache_dir: Path, repo_root: Path | None = None
+) -> dict[str, Path | None]:
+    """Resolve source paths for no-fetch mode (local files and previously cached fetches).
+
+    Local paths must resolve under repo_root (fail closed when repo_root is None).
+    """
     result: dict[str, Path | None] = {}
     for src in sources:
         if not src.enabled:
@@ -50,7 +55,10 @@ def _resolve_local_sources(sources: list[Source], cache_dir: Path) -> dict[str, 
         if url.startswith("file://") and ".." in raw_path.parts:
             logging.warning("Rejected file:// URL with path traversal: %s", url)
             continue
-        src_path = raw_path.resolve() if url.startswith("file://") else raw_path
+        src_path = raw_path.resolve()
+        if repo_root is None or not src_path.is_relative_to(repo_root.resolve()):
+            logging.warning("Rejected local source outside repo root: %s", url)
+            continue
         if src_path.exists():
             result[src.id] = src_path
     return result
@@ -61,6 +69,7 @@ def parallel_fetch_sources(
     cache_dir: Path,
     no_fetch: bool = False,
     timeout_s: int = 30,
+    repo_root: Path | None = None,
 ) -> dict[str, Path | None]:
     """Fetch multiple sources in parallel.
 
@@ -69,12 +78,13 @@ def parallel_fetch_sources(
         cache_dir: Cache directory.
         no_fetch: Skip fetch, use cached files.
         timeout_s: Request timeout per source.
+        repo_root: Containment root for local-path sources (fail closed when None).
 
     Returns:
         Dict mapping source_id -> cache_file_path (None when the fetch failed).
     """
     if no_fetch:
-        return _resolve_local_sources(sources, cache_dir)
+        return _resolve_local_sources(sources, cache_dir, repo_root)
 
     enabled = [s for s in sources if s.enabled]
     workers = min(get_optimal_workers(), len(enabled)) if enabled else 1
@@ -83,7 +93,12 @@ def parallel_fetch_sources(
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {
             executor.submit(
-                fetch_to_cache, src.url, cache_dir, source_id=src.id, timeout_s=timeout_s
+                fetch_to_cache,
+                src.url,
+                cache_dir,
+                source_id=src.id,
+                timeout_s=timeout_s,
+                allowed_base=repo_root,
             ): src.id
             for src in enabled
         }
