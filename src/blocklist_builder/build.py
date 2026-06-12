@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import hashlib
 import json
 import logging
 import os
@@ -113,13 +114,46 @@ def _write_categories(dist_dir: Path, chosen: Mapping[str, str]) -> None:
 
 
 def _write_profiles(dist_dir: Path, chosen: Mapping[str, str], settings: Settings) -> None:
-    """Write profile files (by include_categories)."""
+    """Write profile files (by include_categories), deduplicating identical outputs.
+
+    Byte-identical profiles share one canonical regular file; the others become
+    relative symlinks to it (release uploads follow symlinks, so published asset
+    names are unchanged). manifest.json maps each profile to its canonical file,
+    content hash, and line count.
+    """
+    profiles_dir = dist_dir / "profiles"
+    manifest: dict[str, dict[str, Any]] = {}
+    canonical_by_hash: dict[str, str] = {}
     for pname, pconf in settings.profiles.by_name.items():
         if pconf.include_categories:
             selected = [d for d, c in chosen.items() if c in pconf.include_categories]
         else:
             selected = list(chosen.keys())
-        _write_domain_lines(dist_dir / "profiles" / f"{pname}.txt", sorted(set(selected)))
+        domains = sorted(set(selected))
+        digest = hashlib.sha256()
+        for d in domains:
+            digest.update(d.encode(_ENCODING))
+            digest.update(b"\n")
+        sha = digest.hexdigest()
+
+        target = profiles_dir / f"{pname}.txt"
+        target.unlink(missing_ok=True)
+
+        canonical = canonical_by_hash.get(sha)
+        if canonical is None:
+            canonical = pname
+            canonical_by_hash[sha] = pname
+            _write_domain_lines(target, domains)
+        else:
+            target.symlink_to(f"{canonical}.txt")
+
+        manifest[pname] = {
+            "canonical": f"{canonical}.txt",
+            "sha256": sha,
+            "lines": len(domains),
+        }
+
+    (profiles_dir / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding=_ENCODING)
 
 
 def _collect_domains(

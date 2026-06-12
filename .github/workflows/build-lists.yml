@@ -60,5 +60,6 @@ jobs:
             dist/regex.txt
             dist/categories/*.txt
             dist/profiles/*.txt
+            dist/profiles/manifest.json
             dist/reports/*.json
             dist/reports/*.md

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import gzip
+import hashlib
 import json
 from collections import Counter
 from pathlib import Path
@@ -125,6 +126,95 @@ def test_write_profiles_include_categories(tmp_path: Path) -> None:
     out = (tmp_path / "profiles" / "ads_only.txt").read_text(encoding="utf-8")
     assert "a.com" in out
     assert "b.com" not in out
+
+
+def _profiles_settings(by_name: dict[str, Profile]) -> Settings:
+    return Settings(
+        sources=[],
+        policies=Policies(
+            category_precedence=["advertising", "malicious"],
+            core_domains=set(),
+            base_allowlist=set(),
+        ),
+        profiles=ProfilesConfig(by_name=by_name),
+    )
+
+
+def test_write_profiles_dedups_identical_outputs(tmp_path: Path) -> None:
+    settings = _profiles_settings(
+        {
+            "base": Profile(name="base"),
+            "android": Profile(name="android"),
+            "security": Profile(name="security", include_categories={"malicious"}),
+        }
+    )
+    chosen = {"a.com": "advertising", "b.com": "malicious"}
+    (tmp_path / "profiles").mkdir(parents=True, exist_ok=True)
+    build_mod._write_profiles(tmp_path, chosen, settings)
+
+    base = tmp_path / "profiles" / "base.txt"
+    android = tmp_path / "profiles" / "android.txt"
+    security = tmp_path / "profiles" / "security.txt"
+
+    assert base.is_file() and not base.is_symlink()
+    assert android.is_symlink()
+    assert android.readlink() == Path("base.txt")
+    assert android.read_text(encoding="utf-8") == base.read_text(encoding="utf-8")
+    assert security.is_file() and not security.is_symlink()
+    assert security.read_text(encoding="utf-8") == "b.com\n"
+
+
+def test_write_profiles_manifest_structure(tmp_path: Path) -> None:
+    settings = _profiles_settings(
+        {
+            "base": Profile(name="base"),
+            "android": Profile(name="android"),
+            "security": Profile(name="security", include_categories={"malicious"}),
+        }
+    )
+    chosen = {"a.com": "advertising", "b.com": "malicious"}
+    (tmp_path / "profiles").mkdir(parents=True, exist_ok=True)
+    build_mod._write_profiles(tmp_path, chosen, settings)
+
+    manifest = json.loads((tmp_path / "profiles" / "manifest.json").read_text(encoding="utf-8"))
+    assert set(manifest) == {"base", "android", "security"}
+    assert manifest["base"]["canonical"] == "base.txt"
+    assert manifest["android"]["canonical"] == "base.txt"
+    assert manifest["security"]["canonical"] == "security.txt"
+
+    base_sha = hashlib.sha256((tmp_path / "profiles" / "base.txt").read_bytes()).hexdigest()
+    assert manifest["base"]["sha256"] == base_sha
+    assert manifest["android"]["sha256"] == base_sha
+    assert manifest["base"]["lines"] == 2
+    assert manifest["security"]["lines"] == 1
+
+    security_sha = hashlib.sha256((tmp_path / "profiles" / "security.txt").read_bytes()).hexdigest()
+    assert manifest["security"]["sha256"] == security_sha
+    assert security_sha != base_sha
+
+
+def test_write_profiles_idempotent_over_existing_files(tmp_path: Path) -> None:
+    settings = _profiles_settings(
+        {
+            "base": Profile(name="base"),
+            "android": Profile(name="android"),
+        }
+    )
+    chosen = {"a.com": "advertising"}
+    profiles_dir = tmp_path / "profiles"
+    profiles_dir.mkdir(parents=True, exist_ok=True)
+    (profiles_dir / "base.txt").write_text("stale.example\n", encoding="utf-8")
+    (profiles_dir / "android.txt").write_text("stale.example\n", encoding="utf-8")
+
+    build_mod._write_profiles(tmp_path, chosen, settings)
+    build_mod._write_profiles(tmp_path, chosen, settings)
+
+    base = profiles_dir / "base.txt"
+    android = profiles_dir / "android.txt"
+    assert base.is_file() and not base.is_symlink()
+    assert android.is_symlink()
+    assert android.read_text(encoding="utf-8") == "a.com\n"
+    assert base.read_text(encoding="utf-8") == "a.com\n"
 
 
 def test_collect_domains_skips_disabled(tmp_path: Path) -> None:
