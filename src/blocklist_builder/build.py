@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gzip
 import json
 import logging
 import os
@@ -10,10 +11,9 @@ from functools import cache
 from pathlib import Path
 from typing import Any, Final
 
-from .classify import build_provenance, partition_by_precedence
+from .classify import partition_by_precedence
 from .config import Settings
-from .fetch import fetch_to_cache
-from .parallel import parallel_process_all_sources
+from .parallel import parallel_fetch_sources, parallel_process_all_sources
 from .regex import generate_regex_patterns, write_regex_file
 from .report import Stats, write_reports
 from .sanitize import sanitize_domain
@@ -57,32 +57,6 @@ def _load_drop_patterns(drop_file: Path) -> Sequence[re.Pattern[str]]:
     return patterns
 
 
-def _resolve_source_path(src, no_fetch: bool, cache_dir: Path) -> Path | None:
-    """Resolve source path handling file://, relative, and HTTP URLs.
-
-    Returns None if source cannot be resolved.
-    """
-    if src.url.startswith("http://") and not src.url.startswith("https://"):
-        logging.warning(
-            "Source %s uses http:// (not HTTPS) — connection is insecure: %s",
-            src.id if hasattr(src, "id") else "unknown",
-            src.url,
-        )
-    match src.url:
-        case url if url.startswith("file://"):
-            raw = Path(url.removeprefix("file://"))
-            if ".." in raw.parts:
-                logging.warning("Rejected file:// URL with path traversal: %s", url)
-                return None
-            return raw.resolve()
-        case url if not no_fetch:
-            src_path, _ = fetch_to_cache(url, cache_dir, source_id=src.id)
-            return src_path
-        case url:
-            p = Path(url)
-            return p if p.exists() else None
-
-
 def _resolve_all_source_paths(
     settings: Settings,
     no_fetch: bool,
@@ -90,16 +64,25 @@ def _resolve_all_source_paths(
     discarded: Counter,
     source_stats: dict[str, dict[str, int]],
 ) -> dict[str, Path]:
-    """Resolve file paths for all enabled sources.
+    """Resolve file paths for all enabled sources (parallel fetch when enabled).
 
     Returns:
         Dict of source_id -> resolved file path (only for sources that resolved successfully).
     """
+    enabled = [src for src in settings.sources if src.enabled]
+    for src in enabled:
+        if src.url.startswith("http://") and not src.url.startswith("https://"):
+            logging.warning(
+                "Source %s uses http:// (not HTTPS) — connection is insecure: %s",
+                src.id,
+                src.url,
+            )
+
+    resolved = parallel_fetch_sources(enabled, cache_dir, no_fetch=no_fetch)
+
     source_files: dict[str, Path] = {}
-    for src in settings.sources:
-        if not src.enabled:
-            continue
-        src_path = _resolve_source_path(src, no_fetch, cache_dir)
+    for src in enabled:
+        src_path = resolved.get(src.id)
         if src_path:
             source_files[src.id] = src_path
         else:
@@ -109,16 +92,19 @@ def _resolve_all_source_paths(
     return source_files
 
 
+def _write_domain_lines(path: Path, domains: Sequence[str]) -> None:
+    """Write one domain per line via a generator (no giant joined string)."""
+    with open(path, "w", encoding=_ENCODING) as f:
+        f.writelines(f"{d}\n" for d in domains)
+
+
 def _write_categories(dist_dir: Path, chosen: dict[str, str]) -> None:
     """Write per-category files."""
     cats: dict[str, list[str]] = defaultdict(list)
     for d, c in chosen.items():
         cats[c].append(d)
     for c, ds in cats.items():
-        ds_sorted = sorted(set(ds))
-        (dist_dir / "categories" / f"{c}.txt").write_text(
-            "\n".join(ds_sorted) + ("\n" if ds_sorted else ""), encoding=_ENCODING
-        )
+        _write_domain_lines(dist_dir / "categories" / f"{c}.txt", sorted(set(ds)))
 
 
 def _write_profiles(dist_dir: Path, chosen: dict[str, str], settings: Settings) -> None:
@@ -128,10 +114,7 @@ def _write_profiles(dist_dir: Path, chosen: dict[str, str], settings: Settings) 
             selected = [d for d, c in chosen.items() if c in pconf.include_categories]
         else:
             selected = list(chosen.keys())
-        selected = sorted(set(selected))
-        (dist_dir / "profiles" / f"{pname}.txt").write_text(
-            "\n".join(selected) + ("\n" if selected else ""), encoding=_ENCODING
-        )
+        _write_domain_lines(dist_dir / "profiles" / f"{pname}.txt", sorted(set(selected)))
 
 
 def _collect_domains(
@@ -190,20 +173,75 @@ def _add_deny_extras(domain_to_categories: dict[str, set[str]], deny_extra: froz
             domain_to_categories[san.domain].add("other")
 
 
-def _write_provenance(dist_dir: Path, provenance: dict) -> None:
-    """Write provenance metadata JSON."""
-    prov_out = dist_dir / "reports" / "provenance.json"
+def _write_provenance_streamed(
+    dist_dir: Path,
+    domain_to_sources: dict[str, set[str]],
+    source_map: dict[str, Any],
+    precedence: list[str],
+) -> dict[str, dict[str, int]]:
+    """Stream provenance to gzipped JSONL and accumulate aggregates in one pass.
+
+    Writes:
+        dist/reports/provenance.jsonl.gz — one JSON object per domain.
+        dist/reports/provenance_aggregates.json — small summary for analyze/recommend.
+
+    Returns:
+        Per-source aggregates: {src_id: {"total_contributions": N, "unique_domains": N}}.
+    """
+    reports_dir = dist_dir / "reports"
+    prov_out = reports_dir / "provenance.jsonl.gz"
+    aggregates_out = reports_dir / "provenance_aggregates.json"
+
+    rank = {c: i for i, c in enumerate(precedence)}
+    per_source: dict[str, dict[str, int]] = {
+        src_id: {"total_contributions": 0, "unique_domains": 0} for src_id in source_map
+    }
+    total_unique = 0
+    overlap_2 = 0
+    overlap_3_plus = 0
+
     try:
-        prov_data = {}
-        for d, p in provenance.items():
-            prov_data[d] = {
-                "source_ids": sorted(p.source_ids),
-                "categories": sorted(p.categories),
-                "assigned": p.assigned_category,
-            }
-        prov_out.write_text(json.dumps(prov_data, indent=2), encoding=_ENCODING)
+        with gzip.open(prov_out, "wt", encoding=_ENCODING) as f:
+            for domain, source_ids in domain_to_sources.items():
+                categories = {
+                    source_map[src_id].category for src_id in source_ids if src_id in source_map
+                }
+                assigned = min(categories, key=lambda c: rank.get(c, 999))
+                f.write(
+                    json.dumps(
+                        {
+                            "domain": domain,
+                            "source_ids": sorted(source_ids),
+                            "categories": sorted(categories),
+                            "assigned": assigned,
+                        }
+                    )
+                    + "\n"
+                )
+
+                total_unique += 1
+                n_sources = len(source_ids)
+                if n_sources == 2:
+                    overlap_2 += 1
+                elif n_sources >= 3:
+                    overlap_3_plus += 1
+                for src_id in source_ids:
+                    if src_id in per_source:
+                        per_source[src_id]["total_contributions"] += 1
+                        if n_sources == 1:
+                            per_source[src_id]["unique_domains"] += 1
+
+        aggregates = {
+            "total_unique": total_unique,
+            "overlap_2": overlap_2,
+            "overlap_3_plus": overlap_3_plus,
+            "per_source": per_source,
+        }
+        aggregates_out.write_text(json.dumps(aggregates, indent=2), encoding=_ENCODING)
     except Exception:
-        logging.warning("Failed to write provenance file %s", prov_out, exc_info=True)
+        logging.warning("Failed to write provenance files in %s", reports_dir, exc_info=True)
+
+    return per_source
 
 
 def _write_source_stats(dist_dir: Path, source_stats: dict[str, dict[str, int]]) -> None:
@@ -222,12 +260,13 @@ def _write_marginal(
     domain_to_sources: dict[str, set[str]],
     source_map: dict[str, Any],
 ) -> None:
-    """Write marginal contribution per source."""
+    """Write marginal contribution per source (single pass over domains)."""
     try:
-        marginal: dict[str, int] = {}
-        for src_id in source_map:
-            cnt = sum(1 for d, sset in domain_to_sources.items() if sset == {src_id})
-            marginal[src_id] = cnt
+        unique_counts: Counter[str] = Counter()
+        for sset in domain_to_sources.values():
+            if len(sset) == 1:
+                unique_counts[next(iter(sset))] += 1
+        marginal: dict[str, int] = {src_id: unique_counts.get(src_id, 0) for src_id in source_map}
 
         (dist_dir / "reports" / _MARGINAL_JSON_FILE).write_text(
             json.dumps(marginal, indent=2), encoding=_ENCODING
@@ -285,19 +324,16 @@ def build(
     # Assign categories by precedence
     chosen = partition_by_precedence(domain_to_categories, settings.policies.category_precedence)
 
-    # Build provenance and write metadata
+    # Stream provenance + aggregates and write metadata
     source_map = {s.id: s for s in settings.sources}
-    provenance = build_provenance(
-        domain_to_sources, source_map, settings.policies.category_precedence
+    _write_provenance_streamed(
+        dist_dir, domain_to_sources, source_map, settings.policies.category_precedence
     )
-    _write_provenance(dist_dir, provenance)
     _write_source_stats(dist_dir, source_stats)
 
     # Write outputs
     all_domains = sorted(chosen.keys())
-    (dist_dir / "all.txt").write_text(
-        "\n".join(all_domains) + ("\n" if all_domains else ""), encoding=_ENCODING
-    )
+    _write_domain_lines(dist_dir / "all.txt", all_domains)
 
     _write_categories(dist_dir, chosen)
     _write_profiles(dist_dir, chosen, settings)
@@ -349,5 +385,6 @@ def _write_allowlist(
         "# Subscribe to this list in Pi-hole: Lists > Add allowlist",
         "#",
     ]
-    content = "\n".join(header) + "\n" + "\n".join(combined) + "\n"
-    (dist_dir / "allowlist.txt").write_text(content, encoding=_ENCODING)
+    with open(dist_dir / "allowlist.txt", "w", encoding=_ENCODING) as f:
+        f.writelines(f"{line}\n" for line in header)
+        f.writelines(f"{d}\n" for d in combined)

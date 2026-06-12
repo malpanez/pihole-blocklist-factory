@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from functools import cache
 from typing import Final, Literal
 
 # Compile regex patterns once with optimal flags
@@ -28,9 +27,8 @@ def _normalize_domain(domain: str) -> str:
     return domain.strip().rstrip(".").lower()
 
 
-@cache
 def _is_ipv4(domain: str) -> bool:
-    """Check if domain is an IPv4 address (cached)."""
+    """Check if domain is an IPv4 address."""
     return bool(_IPV4_RE.fullmatch(domain))
 
 
@@ -42,9 +40,8 @@ def _apply_idna(domain: str) -> str | None:
         return None
 
 
-@cache
 def _validate_domain_regex(domain: str) -> bool:
-    """Validate domain against regex pattern (cached for repeated calls)."""
+    """Validate domain against regex pattern."""
     return bool(_DOMAIN_RE.fullmatch(domain))
 
 

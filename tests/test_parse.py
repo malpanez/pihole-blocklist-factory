@@ -51,9 +51,11 @@ def test_parse_comments_and_empty():
     assert len(empty) == 2
 
 
-def test_get_abp_pattern_cached():
-    from blocklist_builder.parse import _get_abp_pattern
+def test_classify_line_single():
+    from blocklist_builder.parse import classify_line
 
-    p1 = _get_abp_pattern()
-    p2 = _get_abp_pattern()
-    assert p1 is p2
+    assert classify_line("0.0.0.0 ads.example.com", ()) == ("ads.example.com", "ok")
+    assert classify_line("# comment", ()) == (None, "comment")
+    assert classify_line("", ()) == (None, "empty")
+    assert classify_line("garbage line here", ()) == (None, "unsupported")
+    assert classify_line("bad.com", [re.compile(r"^bad")]) == (None, "pattern_drop")

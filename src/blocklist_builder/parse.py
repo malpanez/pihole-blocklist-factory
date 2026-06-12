@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Final, Literal
 
 # Compile regex patterns once at module load
@@ -21,12 +20,6 @@ class ParsedLine:
     raw: str
     domain: str | None
     reason: ReasonType
-
-
-@lru_cache(maxsize=1)
-def _get_abp_pattern() -> re.Pattern[str]:
-    """Get compiled ABP regex (cached)."""
-    return _ABP_SIMPLE_PATTERN
 
 
 def _check_drop_patterns(line: str, drop_patterns: Sequence[re.Pattern[str]]) -> bool:
@@ -55,6 +48,38 @@ def _try_parse_abp_simple(line: str) -> str | None:
     return None
 
 
+def classify_line(
+    raw: str,
+    drop_patterns: Sequence[re.Pattern[str]],
+) -> tuple[str | None, ReasonType]:
+    """Classify a single raw line, returning (domain, reason).
+
+    Lightweight counterpart to parse_lines: no ParsedLine allocation per line.
+    """
+    line = raw.strip()
+
+    if not line:
+        return None, "empty"
+
+    if _check_drop_patterns(line, drop_patterns):
+        return None, "pattern_drop"
+
+    match line[0]:
+        case "#" | "!":
+            return None, "comment"
+
+    parts = line.split()
+
+    # Try multiple formats using walrus operator
+    if (
+        (domain := _try_parse_hosts_format(parts))
+        or (domain := _try_parse_domain_only(parts))
+        or (domain := _try_parse_abp_simple(line))
+    ):
+        return domain, "ok"
+    return None, "unsupported"
+
+
 def parse_lines(
     lines: Iterable[str],
     drop_patterns: Sequence[re.Pattern[str]] | None = None,
@@ -71,29 +96,5 @@ def parse_lines(
     drop_patterns_seq: Sequence[re.Pattern[str]] = drop_patterns or ()
 
     for raw in lines:
-        line = raw.strip()
-
-        if not line:
-            yield ParsedLine(raw=raw, domain=None, reason="empty")
-            continue
-
-        if _check_drop_patterns(line, drop_patterns_seq):
-            yield ParsedLine(raw=raw, domain=None, reason="pattern_drop")
-            continue
-
-        match line[0]:
-            case "#" | "!":
-                yield ParsedLine(raw=raw, domain=None, reason="comment")
-                continue
-
-        parts = line.split()
-
-        # Try multiple formats using walrus operator
-        if (
-            (domain := _try_parse_hosts_format(parts))
-            or (domain := _try_parse_domain_only(parts))
-            or (domain := _try_parse_abp_simple(line))
-        ):
-            yield ParsedLine(raw=raw, domain=domain, reason="ok")
-        else:
-            yield ParsedLine(raw=raw, domain=None, reason="unsupported")
+        domain, reason = classify_line(raw, drop_patterns_seq)
+        yield ParsedLine(raw=raw, domain=domain, reason=reason)

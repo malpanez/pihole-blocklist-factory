@@ -40,26 +40,18 @@ def _settings() -> Settings:
 
 def test_analyze_build_reports(tmp_path: Path) -> None:
     dist_dir = tmp_path / "dist"
-    provenance = {
-        "a.example": {
-            "source_ids": ["s1"],
-            "categories": ["advertising"],
-            "assigned": "advertising",
-        },
-        "b.example": {
-            "source_ids": ["s1", "s2"],
-            "categories": ["advertising", "tracking"],
-            "assigned": "tracking",
-        },
-        "c.example": {
-            "source_ids": ["s1", "s2", "s3"],
-            "categories": ["advertising"],
-            "assigned": "advertising",
+    aggregates = {
+        "total_unique": 3,
+        "overlap_2": 1,
+        "overlap_3_plus": 1,
+        "per_source": {
+            "s1": {"total_contributions": 3, "unique_domains": 1},
+            "s2": {"total_contributions": 2, "unique_domains": 0},
         },
     }
     stats = {"total_lines": 10, "parsed_ok": 8, "sanitized_ok": 7}
 
-    _write(dist_dir / "reports" / "provenance.json", json.dumps(provenance))
+    _write(dist_dir / "reports" / "provenance_aggregates.json", json.dumps(aggregates))
     _write(dist_dir / "reports" / "stats.json", json.dumps(stats))
 
     result = analyze_build(dist_dir, _settings())
@@ -78,7 +70,7 @@ def test_analyze_build_missing_reports(tmp_path: Path) -> None:
 def test_analyze_build_invalid_json(tmp_path: Path) -> None:
     dist_dir = tmp_path / "dist"
     (dist_dir / "reports").mkdir(parents=True, exist_ok=True)
-    (dist_dir / "reports" / "provenance.json").write_text("{", encoding="utf-8")
+    (dist_dir / "reports" / "provenance_aggregates.json").write_text("{", encoding="utf-8")
     (dist_dir / "reports" / "stats.json").write_text("{", encoding="utf-8")
     result = analyze_build(dist_dir, _settings())
     assert "error" in result
@@ -87,7 +79,7 @@ def test_analyze_build_invalid_json(tmp_path: Path) -> None:
 def test_analyze_build_missing_stats(tmp_path: Path) -> None:
     dist_dir = tmp_path / "dist"
     (dist_dir / "reports").mkdir(parents=True, exist_ok=True)
-    (dist_dir / "reports" / "provenance.json").write_text("{}", encoding="utf-8")
+    (dist_dir / "reports" / "provenance_aggregates.json").write_text("{}", encoding="utf-8")
     result = analyze_build(dist_dir, _settings())
     assert "error" in result
 
@@ -95,7 +87,7 @@ def test_analyze_build_missing_stats(tmp_path: Path) -> None:
 def test_analyze_build_invalid_stats(tmp_path: Path) -> None:
     dist_dir = tmp_path / "dist"
     (dist_dir / "reports").mkdir(parents=True, exist_ok=True)
-    (dist_dir / "reports" / "provenance.json").write_text("{}", encoding="utf-8")
+    (dist_dir / "reports" / "provenance_aggregates.json").write_text("{}", encoding="utf-8")
     (dist_dir / "reports" / "stats.json").write_text("{", encoding="utf-8")
     result = analyze_build(dist_dir, _settings())
     assert "error" in result

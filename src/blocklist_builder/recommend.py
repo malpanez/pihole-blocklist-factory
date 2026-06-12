@@ -9,14 +9,14 @@ from pathlib import Path
 from .config import Settings
 
 
-def _load_provenance_and_marginal(dist_dir: Path) -> tuple[dict, dict] | tuple[None, None]:
-    """Load provenance.json and marginal.json."""
-    provenance_file = dist_dir / "reports" / "provenance.json"
-    if not provenance_file.exists():
+def _load_aggregates_and_marginal(dist_dir: Path) -> tuple[dict, dict] | tuple[None, None]:
+    """Load provenance_aggregates.json and marginal.json."""
+    aggregates_file = dist_dir / "reports" / "provenance_aggregates.json"
+    if not aggregates_file.exists():
         return None, None
 
     try:
-        provenance = json.loads(provenance_file.read_text(encoding="utf-8"))
+        aggregates = json.loads(aggregates_file.read_text(encoding="utf-8"))
     except Exception:
         return None, None
 
@@ -26,29 +26,23 @@ def _load_provenance_and_marginal(dist_dir: Path) -> tuple[dict, dict] | tuple[N
         with contextlib.suppress(Exception):
             marginal_data = json.loads(marginal_file.read_text(encoding="utf-8"))
 
-    return provenance, marginal_data
+    return aggregates, marginal_data
 
 
 def _compute_source_metrics(
-    provenance: dict, source_map: dict, marginal_data: dict
+    aggregates: dict, source_map: dict, marginal_data: dict
 ) -> dict[str, dict]:
-    """Compute metrics (contributions, unique domains, overlap) per source."""
+    """Compute metrics (contributions, unique domains, overlap) per source.
+
+    Single dict lookup per source against pre-computed per-source aggregates.
+    """
     metrics = {}
+    per_source = aggregates.get("per_source", {})
 
     for src_id in source_map:
-        # Count domains this source contributes to
-        total_contributions = sum(
-            1
-            for _domain, prov_data in provenance.items()
-            if src_id in prov_data.get("source_ids", [])
-        )
-
-        # Count unique (marginal) domains
-        unique_domains = sum(
-            1
-            for _domain, prov_data in provenance.items()
-            if prov_data.get("source_ids", []) == [src_id]
-        )
+        src_agg = per_source.get(src_id, {})
+        total_contributions = int(src_agg.get("total_contributions", 0))
+        unique_domains = int(src_agg.get("unique_domains", 0))
 
         # Count domains shared with others
         shared_domains = total_contributions - unique_domains
@@ -190,16 +184,16 @@ def compute_recommendations(
 
     Returns summary dict and writes markdown report.
     """
-    provenance, marginal_data = _load_provenance_and_marginal(dist_dir)
+    aggregates, marginal_data = _load_aggregates_and_marginal(dist_dir)
 
-    if provenance is None:
-        return {"error": "No provenance.json found. Run build first."}
+    if aggregates is None:
+        return {"error": "No provenance_aggregates.json found. Run build first."}
 
     source_map = {s.id: s for s in settings.sources}
-    total_domains = len(provenance)
+    total_domains = int(aggregates.get("total_unique", 0))
 
     # Compute metrics
-    metrics = _compute_source_metrics(provenance, source_map, marginal_data)
+    metrics = _compute_source_metrics(aggregates, source_map, marginal_data)
 
     # Categorize contributions
     high_value, moderate_value, low_value = _categorize_contributions(

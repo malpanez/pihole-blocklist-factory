@@ -36,16 +36,6 @@ class SourceMetadata:
 
 
 @dataclass(frozen=True, slots=True)
-class Provenance:
-    """Domain's provenance: set of source_ids where it appears."""
-
-    domain: str
-    source_ids: frozenset[str]
-    categories: frozenset[Category]  # categories from those sources
-    assigned_category: Category  # final assigned category by precedence
-
-
-@dataclass(frozen=True, slots=True)
 class Profile:
     name: str
     include_categories: set[str] = field(default_factory=set)

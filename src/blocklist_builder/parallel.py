@@ -17,44 +17,10 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_compl
 from multiprocessing import cpu_count
 from pathlib import Path
 
-from .fetch import fetch_to_cache
-from .parse import parse_lines
+from .fetch import _cache_key, fetch_to_cache
+from .parse import classify_line
 from .sanitize import sanitize_domain
 from .types import Source
-
-
-def _process_chunk_local(
-    chunk_lines: list[str],
-    drop_patterns: list,
-) -> tuple[list[str], dict[str, int], int, int]:
-    """Process a chunk of lines (parse + sanitize) in the current process."""
-    valid = []
-    discarded: dict[str, int] = {}
-    parsed_ok = 0
-    sanitized_ok = 0
-    for pl in parse_lines(chunk_lines, drop_patterns=drop_patterns):
-        if pl.reason != "ok" or not pl.domain:
-            key = f"parse_{pl.reason}"
-            discarded[key] = discarded.get(key, 0) + 1
-            continue
-        parsed_ok += 1
-        san = sanitize_domain(pl.domain)
-        if san.reason == "ok" and san.domain:
-            sanitized_ok += 1
-            valid.append(san.domain)
-        else:
-            key = f"sanitize_{san.reason}"
-            discarded[key] = discarded.get(key, 0) + 1
-    return valid, discarded, parsed_ok, sanitized_ok
-
-
-def _process_chunk_worker(
-    args: tuple[list[str], list[str]],
-) -> tuple[list[str], dict[str, int], int, int]:
-    """Worker-safe chunk processor (picklable)."""
-    chunk_lines, drop_pattern_texts = args
-    patterns = [re.compile(p) for p in drop_pattern_texts] if drop_pattern_texts else []
-    return _process_chunk_local(chunk_lines, patterns)
 
 
 def get_optimal_workers() -> int:
@@ -66,13 +32,20 @@ def get_optimal_workers() -> int:
     return max(1, cpu_count() * 3 // 4)
 
 
-def _resolve_local_sources(sources: list[Source]) -> dict[str, Path]:
-    """Resolve local source paths for no-fetch mode."""
-    result = {}
+def _resolve_local_sources(sources: list[Source], cache_dir: Path) -> dict[str, Path | None]:
+    """Resolve source paths for no-fetch mode (local files and previously cached fetches)."""
+    result: dict[str, Path | None] = {}
     for src in sources:
         if not src.enabled:
             continue
         url = src.url
+        if url.startswith(("http://", "https://")):
+            cached = cache_dir / f"{_cache_key(url)}.txt"
+            if cached.exists():
+                result[src.id] = cached
+            else:
+                logging.warning("No cached copy for %s in no-fetch mode: %s", src.id, url)
+            continue
         raw_path = Path(url.removeprefix("file://")) if url.startswith("file://") else Path(url)
         if url.startswith("file://") and ".." in raw_path.parts:
             logging.warning("Rejected file:// URL with path traversal: %s", url)
@@ -88,7 +61,7 @@ def parallel_fetch_sources(
     cache_dir: Path,
     no_fetch: bool = False,
     timeout_s: int = 30,
-) -> dict[str, Path]:
+) -> dict[str, Path | None]:
     """Fetch multiple sources in parallel.
 
     Args:
@@ -98,14 +71,14 @@ def parallel_fetch_sources(
         timeout_s: Request timeout per source.
 
     Returns:
-        Dict mapping source_id -> cache_file_path.
+        Dict mapping source_id -> cache_file_path (None when the fetch failed).
     """
     if no_fetch:
-        return _resolve_local_sources(sources)
+        return _resolve_local_sources(sources, cache_dir)
 
     enabled = [s for s in sources if s.enabled]
     workers = min(get_optimal_workers(), len(enabled)) if enabled else 1
-    result: dict[str, Path] = {}
+    result: dict[str, Path | None] = {}
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {
@@ -141,22 +114,36 @@ def _process_source_file_worker(
     """
     file_path_str, drop_pattern_texts, allow = args
     patterns = [re.compile(p) for p in drop_pattern_texts] if drop_pattern_texts else []
-    lines = Path(file_path_str).read_text(encoding="utf-8", errors="ignore").splitlines()
-    valid, discarded, parsed_ok, sanitized_ok = _process_chunk_local(lines, patterns)
 
-    # Filter allowlisted domains
+    valid: list[str] = []
+    discarded: dict[str, int] = {}
+    parsed_ok = 0
+    sanitized_ok = 0
     allowlisted = 0
-    if allow:
-        filtered = []
-        for d in valid:
-            if d in allow:
-                allowlisted += 1
+    line_count = 0
+
+    with open(file_path_str, encoding="utf-8", errors="ignore") as f:
+        for raw in f:
+            line_count += 1
+            domain, reason = classify_line(raw, patterns)
+            if reason != "ok" or not domain:
+                key = f"parse_{reason}"
+                discarded[key] = discarded.get(key, 0) + 1
+                continue
+            parsed_ok += 1
+            san = sanitize_domain(domain)
+            if san.reason == "ok" and san.domain:
+                sanitized_ok += 1
+                if allow and san.domain in allow:
+                    allowlisted += 1
+                else:
+                    valid.append(san.domain)
             else:
-                filtered.append(d)
-        valid = filtered
+                key = f"sanitize_{san.reason}"
+                discarded[key] = discarded.get(key, 0) + 1
 
     stats = dict(discarded)
-    stats["lines"] = len(lines)
+    stats["lines"] = line_count
     stats["parse_ok"] = parsed_ok
     stats["sanitize_ok"] = sanitized_ok
     stats["allowlisted"] = allowlisted

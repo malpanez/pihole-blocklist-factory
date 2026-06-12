@@ -56,7 +56,36 @@ sources.firebog.yml + sources.local.yml; 46 configured sources, 43 enabled).
 
 ## Phase 1 comparison
 
-_To be appended after the behavior-preserving perf/memory phase._
+- **Date:** 2026-06-12
+- **Command:** `/usr/bin/time -v uv run blocklist-factory build --no-fetch`
+  (against `.cache/sources/` populated by the baseline fetch; same 43 sources)
+- **sha256(dist/all.txt):** `301b4628e1621f6e83fe467a2c1363bad34df5795f03883f3e6c4b13e7976461`
+  — **byte-identical to baseline** (hard gate passed)
+- **Peak RSS:** 3,578,712 KB (~3.41 GiB) vs baseline 13,158,740 KB (~12.55 GiB)
+  → **-72.8%** (directly comparable: same inputs, fetch I/O does not affect peak RSS,
+  which is dominated by the parse/provenance phase)
+- **Wall time:** 4:40.81 (no-fetch) vs baseline 9:47.58 (full fetch) — qualitative only,
+  since the baseline includes ~44 network downloads
+- **Pipeline stats:** identical (unique 4,803,099 / parsed_ok 6,871,067 /
+  sanitized_ok 6,865,799)
+
+### Provenance artifact change (approved format change)
+
+| Artifact | Baseline | Phase 1 |
+|---|---|---|
+| provenance.json | 832,869,800 B (~794 MiB) | no longer written |
+| provenance.jsonl.gz | — | 48,093,478 B (~46 MiB, streamed) |
+| provenance_aggregates.json | — | 5,072 B |
+
+analyze/recommend now consume `provenance_aggregates.json` (single dict lookup per
+source) instead of loading the full provenance JSON into memory.
+
+### Note: --no-fetch cache resolution fix
+
+Pre-existing gap: `--no-fetch` resolved only local-path sources; http(s) sources were
+never mapped to their `.cache/sources/` entries, so a no-fetch build produced only
+5 domains. Fixed in `_resolve_local_sources` (cache-key lookup per URL) — required
+for this comparison and for the documented no-fetch workflow to function at all.
 
 ## Phase 2 comparison
 
