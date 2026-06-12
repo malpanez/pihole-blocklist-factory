@@ -118,6 +118,13 @@ def test_build_writes_stats_and_source_stats(tmp_path: Path) -> None:
     allowlist_txt = (repo_root / "dist" / "allowlist.txt").read_text(encoding="utf-8")
     assert "ads.example.com" in allowlist_txt
 
+    assert (repo_root / "dist" / "reports" / "provenance.jsonl.gz").exists()
+    aggregates = json.loads(
+        (repo_root / "dist" / "reports" / "provenance_aggregates.json").read_text(encoding="utf-8")
+    )
+    assert aggregates["total_unique"] == 4
+    assert set(aggregates["per_source"]) == {"src1", "src2"}
+
     source_stats_path = repo_root / "dist" / "reports" / "source_stats.json"
     source_stats = json.loads(source_stats_path.read_text(encoding="utf-8"))
     assert source_stats["src1"]["lines"] == 10

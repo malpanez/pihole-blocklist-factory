@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import gzip
+import json
 from collections import Counter
 from pathlib import Path
 
 import blocklist_builder.build as build_mod
 from blocklist_builder.config import Policies, ProfilesConfig, Settings
-from blocklist_builder.types import Profile, Provenance, Source
+from blocklist_builder.types import Profile, Source
 
 
 def _settings_for(tmp_path: Path, sources: list[Source]) -> Settings:
@@ -40,51 +42,30 @@ def test_load_drop_patterns_invalid_regex(tmp_path: Path) -> None:
     assert patterns[0].pattern == "^skip\\.me$"
 
 
-def test_resolve_source_path_file_url(tmp_path: Path) -> None:
-    source = tmp_path / "list.txt"
-    source.write_text("example.com\n", encoding="utf-8")
-
-    class S:
-        def __init__(self, url: str, id: str = "s1") -> None:
-            self.url = url
-            self.id = id
-
-    src = S(f"file://{source}")
-    out = build_mod._resolve_source_path(src, no_fetch=True, cache_dir=tmp_path)
-    assert out == source
-
-
-def test_resolve_source_path_local_no_fetch(tmp_path: Path) -> None:
-    source = tmp_path / "list2.txt"
-    source.write_text("example.com\n", encoding="utf-8")
-
-    class S:
-        def __init__(self, url: str, id: str = "s1") -> None:
-            self.url = url
-            self.id = id
-
-    src = S(str(source))
-    out = build_mod._resolve_source_path(src, no_fetch=True, cache_dir=tmp_path)
-    assert out == source
-
-
-def test_resolve_source_path_fetch(monkeypatch, tmp_path: Path) -> None:
+def test_resolve_all_source_paths_fetch_mode(monkeypatch, tmp_path: Path) -> None:
     cache_file = tmp_path / "cache.txt"
+    cache_file.write_text("example.com\n", encoding="utf-8")
 
-    def fake_fetch(url: str, cache_dir: Path, source_id: str = "s1"):
-        cache_file.write_text("example.com\n", encoding="utf-8")
-        return cache_file, None
+    def fake_parallel_fetch(sources, cache_dir, no_fetch=False, timeout_s=30, repo_root=None):
+        return {src.id: (cache_file if src.id == "s1" else None) for src in sources}
 
-    monkeypatch.setattr(build_mod, "fetch_to_cache", fake_fetch)
+    monkeypatch.setattr(build_mod, "parallel_fetch_sources", fake_parallel_fetch)
 
-    class S:
-        def __init__(self, url: str, id: str = "s1") -> None:
-            self.url = url
-            self.id = id
-
-    src = S("http://example.com/list.txt")
-    out = build_mod._resolve_source_path(src, no_fetch=False, cache_dir=tmp_path)
-    assert out == cache_file
+    ok = Source(id="s1", name="s1", category="advertising", url="https://example.com/a.txt")
+    failed = Source(id="s2", name="s2", category="advertising", url="https://example.com/b.txt")
+    settings = _settings_for(tmp_path, [ok, failed])
+    discarded = Counter()
+    source_stats: dict[str, dict[str, int]] = {}
+    result = build_mod._resolve_all_source_paths(
+        settings,
+        no_fetch=False,
+        cache_dir=tmp_path,
+        discarded=discarded,
+        source_stats=source_stats,
+    )
+    assert result == {"s1": cache_file}
+    assert discarded["source_missing"] == 1
+    assert source_stats["s2"]["source_missing"] == 1
 
 
 def test_resolve_all_source_paths_skips_disabled(tmp_path: Path) -> None:
@@ -96,7 +77,12 @@ def test_resolve_all_source_paths_skips_disabled(tmp_path: Path) -> None:
     discarded = Counter()
     source_stats: dict[str, dict[str, int]] = {}
     result = build_mod._resolve_all_source_paths(
-        settings, no_fetch=True, cache_dir=tmp_path, discarded=discarded, source_stats=source_stats
+        settings,
+        no_fetch=True,
+        cache_dir=tmp_path,
+        discarded=discarded,
+        source_stats=source_stats,
+        repo_root=tmp_path,
     )
     assert "s1" in result
     assert "s2" not in result
@@ -108,7 +94,12 @@ def test_resolve_all_source_paths_missing_source(tmp_path: Path) -> None:
     discarded = Counter()
     source_stats: dict[str, dict[str, int]] = {}
     result = build_mod._resolve_all_source_paths(
-        settings, no_fetch=True, cache_dir=tmp_path, discarded=discarded, source_stats=source_stats
+        settings,
+        no_fetch=True,
+        cache_dir=tmp_path,
+        discarded=discarded,
+        source_stats=source_stats,
+        repo_root=tmp_path,
     )
     assert "s1" not in result
     assert discarded["source_missing"] == 1
@@ -151,9 +142,24 @@ def test_collect_domains_skips_disabled(tmp_path: Path) -> None:
         allow=frozenset(),
         discarded=discarded,
         source_stats=source_stats,
+        repo_root=tmp_path,
     )
     assert "example.com" in cats
     assert "s2" not in source_stats
+
+
+def test_build_rejects_local_source_outside_repo_root(tmp_path: Path) -> None:
+    outside = tmp_path / "outside" / "list.txt"
+    outside.parent.mkdir(parents=True)
+    outside.write_text("example.com\n", encoding="utf-8")
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+
+    escapee = Source(id="esc", name="esc", category="advertising", url=str(outside))
+    settings = _settings_for(repo_root, [escapee])
+    stats = build_mod.build(repo_root, settings, no_fetch=True)
+    assert stats.discarded["source_missing"] == 1
+    assert stats.unique_domains == 0
 
 
 def test_add_deny_extras(tmp_path: Path) -> None:
@@ -164,15 +170,53 @@ def test_add_deny_extras(tmp_path: Path) -> None:
     assert "example.com" in domain_to_categories
 
 
-def test_write_provenance_error(tmp_path: Path, monkeypatch) -> None:
-    def boom(self, *args, **kwargs):
+def test_write_provenance_streamed(tmp_path: Path) -> None:
+    (tmp_path / "reports").mkdir(parents=True, exist_ok=True)
+    domain_to_sources = {
+        "a.com": {"s1"},
+        "b.com": {"s1", "s2"},
+        "c.com": {"s1", "s2", "s3"},
+    }
+    source_map = {
+        "s1": Source(id="s1", name="s1", category="advertising", url="x"),
+        "s2": Source(id="s2", name="s2", category="tracking", url="y"),
+        "s3": Source(id="s3", name="s3", category="malicious", url="z"),
+    }
+    per_source = build_mod._write_provenance_streamed(
+        tmp_path, domain_to_sources, source_map, ["malicious", "tracking", "advertising"]
+    )
+
+    with gzip.open(tmp_path / "reports" / "provenance.jsonl.gz", "rt", encoding="utf-8") as f:
+        records = [json.loads(line) for line in f]
+    by_domain = {r["domain"]: r for r in records}
+    assert by_domain["a.com"]["source_ids"] == ["s1"]
+    assert by_domain["a.com"]["assigned"] == "advertising"
+    assert by_domain["b.com"]["assigned"] == "tracking"
+    assert by_domain["c.com"]["assigned"] == "malicious"
+    assert by_domain["c.com"]["categories"] == ["advertising", "malicious", "tracking"]
+
+    aggregates = json.loads(
+        (tmp_path / "reports" / "provenance_aggregates.json").read_text(encoding="utf-8")
+    )
+    assert aggregates["total_unique"] == 3
+    assert aggregates["overlap_2"] == 1
+    assert aggregates["overlap_3_plus"] == 1
+    assert aggregates["per_source"]["s1"] == {"total_contributions": 3, "unique_domains": 1}
+    assert aggregates["per_source"]["s2"] == {"total_contributions": 2, "unique_domains": 0}
+    assert per_source == aggregates["per_source"]
+
+
+def test_write_provenance_streamed_error(tmp_path: Path, monkeypatch) -> None:
+    def boom(*args, **kwargs):
         raise OSError("boom")
 
-    monkeypatch.setattr(Path, "write_text", boom)
-    prov = {
-        "a.com": Provenance("a.com", frozenset({"s1"}), frozenset({"advertising"}), "advertising")
-    }
-    build_mod._write_provenance(tmp_path, prov)
+    monkeypatch.setattr(build_mod.gzip, "open", boom)
+    build_mod._write_provenance_streamed(
+        tmp_path,
+        {"a.com": {"s1"}},
+        {"s1": Source(id="s1", name="s1", category="advertising", url="x")},
+        ["advertising"],
+    )
 
 
 def test_write_source_stats_empty_and_error(tmp_path: Path, monkeypatch) -> None:
@@ -184,6 +228,25 @@ def test_write_source_stats_empty_and_error(tmp_path: Path, monkeypatch) -> None
 
     monkeypatch.setattr(Path, "write_text", boom)
     build_mod._write_source_stats(tmp_path, {"s1": {"lines": 1}})
+
+
+def test_write_marginal_single_pass(tmp_path: Path) -> None:
+    (tmp_path / "reports").mkdir(parents=True, exist_ok=True)
+    domain_to_sources = {
+        "a.com": {"s1"},
+        "b.com": {"s1", "s2"},
+        "c.com": {"s2"},
+        "d.com": {"s2"},
+        "e.com": {"unknown"},
+    }
+    source_map = {
+        "s1": Source(id="s1", name="s1", category="advertising", url="x"),
+        "s2": Source(id="s2", name="s2", category="tracking", url="y"),
+        "s3": Source(id="s3", name="s3", category="malicious", url="z"),
+    }
+    build_mod._write_marginal(tmp_path, domain_to_sources, source_map)
+    marginal = json.loads((tmp_path / "reports" / "marginal.json").read_text(encoding="utf-8"))
+    assert marginal == {"s1": 1, "s2": 2, "s3": 0}
 
 
 def test_write_marginal_error(tmp_path: Path, monkeypatch) -> None:

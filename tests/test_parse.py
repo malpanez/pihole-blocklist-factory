@@ -51,9 +51,45 @@ def test_parse_comments_and_empty():
     assert len(empty) == 2
 
 
-def test_get_abp_pattern_cached():
-    from blocklist_builder.parse import _get_abp_pattern
+def test_classify_line_single():
+    from blocklist_builder.parse import classify_line
 
-    p1 = _get_abp_pattern()
-    p2 = _get_abp_pattern()
-    assert p1 is p2
+    assert classify_line("0.0.0.0 ads.example.com", ()) == (("ads.example.com",), "ok")
+    assert classify_line("# comment", ()) == ((), "comment")
+    assert classify_line("", ()) == ((), "empty")
+    assert classify_line("garbage line here", ()) == ((), "unsupported")
+    assert classify_line("bad.com", [re.compile(r"^bad")]) == ((), "pattern_drop")
+
+
+def test_classify_line_multi_hostname():
+    from blocklist_builder.parse import classify_line
+
+    domains, reason = classify_line("0.0.0.0 a.example.com b.example.com c.example.com", ())
+    assert reason == "ok"
+    assert domains == ("a.example.com", "b.example.com", "c.example.com")
+
+
+def test_classify_line_multi_hostname_inline_comment():
+    from blocklist_builder.parse import classify_line
+
+    domains, reason = classify_line("0.0.0.0 a.example.com # inline note", ())
+    assert reason == "ok"
+    assert domains == ("a.example.com",)
+
+
+def test_parse_multi_hostname_hosts_line():
+    """Each hostname on a multi-host hosts line counts toward parse_ok individually."""
+    out = list(parse_lines(["0.0.0.0 a.example.com b.example.com"]))
+    ok = [x.domain for x in out if x.reason == "ok"]
+    assert ok == ["a.example.com", "b.example.com"]
+    # one ParsedLine per hostname, same raw line
+    assert all(x.raw == "0.0.0.0 a.example.com b.example.com" for x in out)
+
+
+def test_parse_wildcard_rejected():
+    """Wildcards are counted as wildcard, never mapped to base domain."""
+    out = list(parse_lines(["*.example.com", "0.0.0.0 *.tracker.example.com good.example.com"]))
+    wildcards = [x for x in out if x.reason == "wildcard"]
+    ok = [x.domain for x in out if x.reason == "ok"]
+    assert len(wildcards) == 2
+    assert ok == ["good.example.com"]

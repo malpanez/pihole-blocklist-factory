@@ -32,7 +32,7 @@ Production-grade tooling to build, sanitize, and distribute custom **Pi-hole v6*
 git clone https://github.com/malpanez/pihole-blocklist-factory.git
 cd pihole-blocklist-factory
 
-uv sync --all-extras
+uv sync
 
 uv run ruff check .
 uv run ruff format .
@@ -153,7 +153,6 @@ curl "http://pihole.local/api/adlists" \
 
 - **CI**: lint + tests + coverage on every push/PR.
 - **Build Lists**: manual + weekly/monthly schedules. Generates `dist/` and publishes a GitHub Release with the `.txt` assets.
-- **Update**: manual only (template for future PR-based updates).
 
 ## Download lists (Releases)
 
@@ -196,6 +195,15 @@ src/blocklist_builder/
 - [ ] Churn report (delta vs previous build)
 - [ ] Release channels (stable/edge)
 
+## Known limitations
+
+- Domains containing underscores (e.g. `tracker_metrics.example.com`) are rejected by
+  the validator. Underscores are technically invalid in hostnames (RFC 952/1123), but
+  they do appear in some tracking lists; such entries are counted under
+  `sanitize_not_fqdn` and excluded from the output.
+- Wildcard entries (`*.example.com`) are not expanded or mapped to their base domain;
+  they are counted under `parse_wildcard` and excluded from the output.
+
 ## License
 
 - Code: MIT (see `LICENSE`)
@@ -230,7 +238,7 @@ Herramienta de producción para construir, sanitizar y distribuir listas persona
 git clone https://github.com/malpanez/pihole-blocklist-factory.git
 cd pihole-blocklist-factory
 
-uv sync --all-extras
+uv sync
 uv run ruff check .
 uv run ruff format .
 uv run pytest
@@ -248,7 +256,6 @@ uv run blocklist-factory build --json
 
 - **CI**: lint + tests + coverage en cada push/PR.
 - **Build Lists**: manual + cron semanal/mensual. Genera `dist/` y publica Releases con assets `.txt`.
-- **Update**: solo manual (plantilla futura).
 
 ## Descarga de listas (Releases)
 

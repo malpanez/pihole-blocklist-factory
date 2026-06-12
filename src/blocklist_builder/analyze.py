@@ -8,16 +8,16 @@ from pathlib import Path
 from .config import Settings
 
 
-def _load_provenance_and_stats(
+def _load_aggregates_and_stats(
     dist_dir: Path,
 ) -> tuple[dict, dict] | tuple[None, None]:
-    """Load provenance.json and stats.json, return tuple or (None, None) on error."""
-    provenance_file = dist_dir / "reports" / "provenance.json"
-    if not provenance_file.exists():
+    """Load provenance_aggregates.json and stats.json, return tuple or (None, None) on error."""
+    aggregates_file = dist_dir / "reports" / "provenance_aggregates.json"
+    if not aggregates_file.exists():
         return None, None
 
     try:
-        provenance = json.loads(provenance_file.read_text(encoding="utf-8"))
+        aggregates = json.loads(aggregates_file.read_text(encoding="utf-8"))
     except Exception:
         return None, None
 
@@ -30,7 +30,7 @@ def _load_provenance_and_stats(
     except Exception:
         return None, None
 
-    return provenance, stats_data
+    return aggregates, stats_data
 
 
 def _load_source_stats(dist_dir: Path) -> dict | None:
@@ -63,19 +63,12 @@ def _compute_discard_findings(
     return findings
 
 
-def _compute_overlap_findings(provenance: dict) -> tuple[list[str], int, int]:
-    """Compute overlap analysis."""
+def _compute_overlap_findings(aggregates: dict) -> tuple[list[str], int, int]:
+    """Compute overlap analysis from pre-computed aggregates."""
     findings = []
-    overlap_2 = 0
-    overlap_3_plus = 0
-    total_unique = len(provenance)
-
-    for _domain, prov_data in provenance.items():
-        src_count = len(prov_data.get("source_ids", []))
-        if src_count == 2:
-            overlap_2 += 1
-        elif src_count >= 3:
-            overlap_3_plus += 1
+    overlap_2 = int(aggregates.get("overlap_2", 0))
+    overlap_3_plus = int(aggregates.get("overlap_3_plus", 0))
+    total_unique = int(aggregates.get("total_unique", 0))
 
     overlap_pct_2 = (overlap_2 / total_unique * 100) if total_unique > 0 else 0
     overlap_pct_3 = (overlap_3_plus / total_unique * 100) if total_unique > 0 else 0
@@ -135,18 +128,20 @@ def analyze_build(dist_dir: Path, settings: Settings, output_file: Path | None =
 
     Returns summary dict with findings and writes dist/reports/quality.md.
     """
-    provenance, stats_data = _load_provenance_and_stats(dist_dir)
+    aggregates, stats_data = _load_aggregates_and_stats(dist_dir)
 
-    if provenance is None:
-        return {"error": "No provenance.json or stats.json found. Run build first."}
+    if aggregates is None:
+        return {"error": "No provenance_aggregates.json or stats.json found. Run build first."}
 
     source_map = {s.id: s for s in settings.sources}
-    total_unique = len(provenance)
+    total_unique = int(aggregates.get("total_unique", 0))
 
     # Compute findings
     source_stats_data = _load_source_stats(dist_dir)
-    discard_findings = _compute_discard_findings(source_stats_data, source_map) if source_stats_data else []
-    overlap_findings, overlap_2, overlap_3_plus = _compute_overlap_findings(provenance)
+    discard_findings = (
+        _compute_discard_findings(source_stats_data, source_map) if source_stats_data else []
+    )
+    overlap_findings, overlap_2, overlap_3_plus = _compute_overlap_findings(aggregates)
 
     all_findings = discard_findings + overlap_findings
 

@@ -35,7 +35,7 @@ def test_parallel_fetch_sources_no_fetch(tmp_path: Path) -> None:
         S(f"file://{source}", True, "s2"),
         S(str(source), False, "s3"),
     ]
-    result = parallel_fetch_sources(sources, tmp_path / "cache", no_fetch=True)
+    result = parallel_fetch_sources(sources, tmp_path / "cache", no_fetch=True, repo_root=tmp_path)
     assert result["s1"].exists()
     assert result["s2"].exists()
     assert "s3" not in result
@@ -74,7 +74,7 @@ def test_parallel_fetch_sources_with_errors(monkeypatch, tmp_path: Path) -> None
         def __exit__(self, exc_type, exc, tb):
             return False
 
-        def submit(self, fn, url, cache_dir, source_id=None, timeout_s=None):
+        def submit(self, fn, url, cache_dir, source_id=None, timeout_s=None, allowed_base=None):
             if "fail" in url:
                 return _Future(exc=RuntimeError("boom"))
             return _Future(result=(tmp_path / "ok.txt", None))
@@ -88,22 +88,34 @@ def test_parallel_fetch_sources_with_errors(monkeypatch, tmp_path: Path) -> None
     assert "s3" not in result
 
 
-def test_process_chunk_worker_patterns() -> None:
-    valid, discarded, parsed_ok, sanitized_ok = parallel._process_chunk_worker(
-        (["bad", "example.com"], [r"^bad$"])
-    )
-    assert parsed_ok == 1
-    assert sanitized_ok == 1
-    assert discarded["parse_pattern_drop"] == 1
-
-
-def test_process_chunk_worker_empty_patterns() -> None:
-    valid, discarded, parsed_ok, sanitized_ok = parallel._process_chunk_worker(
-        (["example.com"], [])
-    )
-    assert parsed_ok == 1
-    assert sanitized_ok == 1
+def test_process_source_file_worker_drop_patterns(tmp_path: Path) -> None:
+    source = tmp_path / "list.txt"
+    source.write_text("bad\nexample.com\n", encoding="utf-8")
+    valid, stats = parallel._process_source_file_worker((str(source), [r"^bad$"], frozenset()))
     assert valid == ["example.com"]
+    assert stats["parse_ok"] == 1
+    assert stats["sanitize_ok"] == 1
+    assert stats["parse_pattern_drop"] == 1
+
+
+def test_process_source_file_worker_sanitize_discard(tmp_path: Path) -> None:
+    source = tmp_path / "list.txt"
+    source.write_text("0.0.0.0 1.2.3.4\nexample.com\n", encoding="utf-8")
+    valid, stats = parallel._process_source_file_worker((str(source), [], frozenset()))
+    assert valid == ["example.com"]
+    assert stats["sanitize_ip"] == 1
+    assert stats["parse_ok"] == 2
+    assert stats["sanitize_ok"] == 1
+
+
+def test_process_source_file_worker_wildcard_and_multihost(tmp_path: Path) -> None:
+    source = tmp_path / "list.txt"
+    source.write_text("*.wild.example.com\n0.0.0.0 a.example.com b.example.com\n", encoding="utf-8")
+    valid, stats = parallel._process_source_file_worker((str(source), [], frozenset()))
+    assert set(valid) == {"a.example.com", "b.example.com"}
+    assert stats["parse_wildcard"] == 1
+    assert stats["parse_ok"] == 2
+    assert stats["lines"] == 2
 
 
 def test_process_source_file_worker(tmp_path: Path) -> None:
@@ -211,8 +223,49 @@ def test_resolve_local_sources_traversal_rejected() -> None:
             self.id = id
 
     source = S(url="file:///../etc/passwd", enabled=True, id="bad")
-    result = parallel._resolve_local_sources([source])
+    result = parallel._resolve_local_sources([source], Path("/nonexistent-cache"))
     assert result == {}
+
+
+def test_resolve_local_sources_outside_repo_root_rejected(tmp_path: Path) -> None:
+    class S:
+        def __init__(self, url: str, enabled: bool = True, id: str = "s1") -> None:
+            self.url = url
+            self.enabled = enabled
+            self.id = id
+
+    outside = tmp_path / "outside" / "list.txt"
+    outside.parent.mkdir(parents=True)
+    outside.write_text("example.com\n", encoding="utf-8")
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+
+    sources = [S(str(outside), True, "escapee")]
+    # escapes repo_root -> rejected
+    assert parallel._resolve_local_sources(sources, tmp_path / "cache", repo_root) == {}
+    # no repo_root at all -> fail closed
+    assert parallel._resolve_local_sources(sources, tmp_path / "cache", None) == {}
+
+
+def test_resolve_local_sources_http_from_cache(tmp_path: Path) -> None:
+    from blocklist_builder.fetch import _cache_key
+
+    class S:
+        def __init__(self, url: str, enabled: bool = True, id: str = "s1") -> None:
+            self.url = url
+            self.enabled = enabled
+            self.id = id
+
+    cached_url = "https://example.com/cached.txt"
+    uncached_url = "https://example.com/uncached.txt"
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    cached_file = cache_dir / f"{_cache_key(cached_url)}.txt"
+    cached_file.write_text("example.com\n", encoding="utf-8")
+
+    sources = [S(cached_url, True, "hit"), S(uncached_url, True, "miss")]
+    result = parallel._resolve_local_sources(sources, cache_dir)
+    assert result == {"hit": cached_file}
 
 
 def test_parallel_process_all_sources_worker_failure(monkeypatch, tmp_path: Path) -> None:

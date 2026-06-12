@@ -52,8 +52,12 @@ def test_fetch_firebog_csv_entry_error(monkeypatch) -> None:
 
 def test_sync_firebog_dry_run(tmp_path: Path, monkeypatch) -> None:
     entries = [
-        FirebogEntry(category="ads", status="tick", home="h", title="Ads One", url="u1"),
-        FirebogEntry(category="ads", status="tick", home="h", title="Ads Two", url="u2"),
+        FirebogEntry(
+            category="ads", status="tick", home="h", title="Ads One", url="https://example.com/1"
+        ),
+        FirebogEntry(
+            category="ads", status="tick", home="h", title="Ads Two", url="https://example.com/2"
+        ),
     ]
 
     def fake_fetch():
@@ -66,9 +70,33 @@ def test_sync_firebog_dry_run(tmp_path: Path, monkeypatch) -> None:
     assert not (tmp_path / "sources.firebog.yml").exists()
 
 
+def test_sync_firebog_skips_non_https(tmp_path: Path, monkeypatch, capsys) -> None:
+    entries = [
+        FirebogEntry(
+            category="ads", status="tick", home="h", title="Secure", url="https://example.com/ok"
+        ),
+        FirebogEntry(
+            category="ads", status="tick", home="h", title="Insecure", url="http://example.com/no"
+        ),
+        FirebogEntry(category="ads", status="tick", home="h", title="Garbage", url="ftp://x"),
+    ]
+
+    def fake_fetch():
+        return entries
+
+    monkeypatch.setattr(firebog, "fetch_firebog_csv", fake_fetch)
+    result = firebog.sync_firebog(tmp_path, dry_run=True)
+    assert result["sources_generated"] == 1
+    out = capsys.readouterr().out
+    assert "Skipping non-https" in out
+    assert "http://example.com/no" in out
+
+
 def test_sync_firebog_writes_file(tmp_path: Path, monkeypatch) -> None:
     entries = [
-        FirebogEntry(category="ads", status="tick", home="h", title="Ads One", url="u1"),
+        FirebogEntry(
+            category="ads", status="tick", home="h", title="Ads One", url="https://example.com/1"
+        ),
     ]
 
     def fake_fetch():
@@ -80,6 +108,7 @@ def test_sync_firebog_writes_file(tmp_path: Path, monkeypatch) -> None:
     assert out.exists()
     assert "sources:" in out.read_text(encoding="utf-8")
     import yaml as _yaml
+
     parsed = _yaml.safe_load(out.read_text(encoding="utf-8"))
     assert len(parsed["sources"]) == 1
     assert parsed["sources"][0]["id"].startswith("firebog_ads_")

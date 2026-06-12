@@ -3,7 +3,6 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Final, Literal
 
 # Compile regex patterns once at module load
@@ -11,7 +10,7 @@ _ABP_SIMPLE_PATTERN: Final = re.compile(r"^\|\|(?P<domain>[A-Za-z0-9.-]+)\^$")
 _HOSTS_IP_PREFIXES: Final[frozenset[str]] = frozenset({"0.0.0.0", "127.0.0.1", "::", "0"})
 
 # Literal reason strings for type safety
-ReasonType = Literal["ok", "comment", "empty", "unsupported", "invalid", "pattern_drop"]
+ReasonType = Literal["ok", "comment", "empty", "unsupported", "invalid", "pattern_drop", "wildcard"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,21 +22,23 @@ class ParsedLine:
     reason: ReasonType
 
 
-@lru_cache(maxsize=1)
-def _get_abp_pattern() -> re.Pattern[str]:
-    """Get compiled ABP regex (cached)."""
-    return _ABP_SIMPLE_PATTERN
-
-
 def _check_drop_patterns(line: str, drop_patterns: Sequence[re.Pattern[str]]) -> bool:
     """Check if line matches any drop pattern."""
     return any(p.search(line) for p in drop_patterns)
 
 
-def _try_parse_hosts_format(parts: Sequence[str]) -> str | None:
-    """Try to parse hosts format (0.0.0.0/127.0.0.1/::/0 domain)."""
+def _try_parse_hosts_format(parts: Sequence[str]) -> tuple[str, ...] | None:
+    """Try to parse hosts format (0.0.0.0/127.0.0.1/::/0 host [host ...]).
+
+    Returns all hostnames on the line, truncated at an inline comment token.
+    """
     if len(parts) >= 2 and parts[0] in _HOSTS_IP_PREFIXES:
-        return parts[1]
+        hosts: list[str] = []
+        for p in parts[1:]:
+            if p.startswith("#") or p.startswith("!"):
+                break
+            hosts.append(p)
+        return tuple(hosts) or None
     return None
 
 
@@ -55,11 +56,45 @@ def _try_parse_abp_simple(line: str) -> str | None:
     return None
 
 
+def classify_line(
+    raw: str,
+    drop_patterns: Sequence[re.Pattern[str]],
+) -> tuple[tuple[str, ...], ReasonType]:
+    """Classify a single raw line, returning (domains, reason).
+
+    Lightweight counterpart to parse_lines: no ParsedLine allocation per line.
+    Hosts-format lines may carry multiple hostnames; all are returned.
+    Wildcard handling (``*.example.com``) is the caller's responsibility.
+    """
+    line = raw.strip()
+
+    if not line:
+        return (), "empty"
+
+    if _check_drop_patterns(line, drop_patterns):
+        return (), "pattern_drop"
+
+    match line[0]:
+        case "#" | "!":
+            return (), "comment"
+
+    parts = line.split()
+
+    if hosts := _try_parse_hosts_format(parts):
+        return hosts, "ok"
+    if (domain := _try_parse_domain_only(parts)) or (domain := _try_parse_abp_simple(line)):
+        return (domain,), "ok"
+    return (), "unsupported"
+
+
 def parse_lines(
     lines: Iterable[str],
     drop_patterns: Sequence[re.Pattern[str]] | None = None,
 ) -> Iterator[ParsedLine]:
     """Parse lines from a blocklist, optionally filtering by regex patterns.
+
+    Multi-hostname hosts lines yield one ParsedLine per hostname.
+    Wildcard hostnames (``*.example.com``) yield reason "wildcard" (unsupported).
 
     Args:
         lines: Input lines from blocklist.
@@ -71,29 +106,12 @@ def parse_lines(
     drop_patterns_seq: Sequence[re.Pattern[str]] = drop_patterns or ()
 
     for raw in lines:
-        line = raw.strip()
-
-        if not line:
-            yield ParsedLine(raw=raw, domain=None, reason="empty")
+        domains, reason = classify_line(raw, drop_patterns_seq)
+        if reason != "ok":
+            yield ParsedLine(raw=raw, domain=None, reason=reason)
             continue
-
-        if _check_drop_patterns(line, drop_patterns_seq):
-            yield ParsedLine(raw=raw, domain=None, reason="pattern_drop")
-            continue
-
-        match line[0]:
-            case "#" | "!":
-                yield ParsedLine(raw=raw, domain=None, reason="comment")
-                continue
-
-        parts = line.split()
-
-        # Try multiple formats using walrus operator
-        if (
-            (domain := _try_parse_hosts_format(parts))
-            or (domain := _try_parse_domain_only(parts))
-            or (domain := _try_parse_abp_simple(line))
-        ):
-            yield ParsedLine(raw=raw, domain=domain, reason="ok")
-        else:
-            yield ParsedLine(raw=raw, domain=None, reason="unsupported")
+        for domain in domains:
+            if domain.startswith("*."):
+                yield ParsedLine(raw=raw, domain=None, reason="wildcard")
+            else:
+                yield ParsedLine(raw=raw, domain=domain, reason="ok")
