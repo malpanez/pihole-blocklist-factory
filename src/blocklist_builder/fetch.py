@@ -5,7 +5,7 @@ import json
 import time
 from functools import cache
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 import requests
 
@@ -36,14 +36,15 @@ def _compute_hash(content: str) -> str:
     return hashlib.sha256(content.encode(_HASH_ENCODING)).hexdigest()
 
 
-def _load_metadata(metadata_path: Path) -> dict | None:
+def _load_metadata(metadata_path: Path) -> dict[str, Any] | None:
     """Load metadata JSON if exists, else None."""
     if not metadata_path.exists():
         return None
     try:
-        return json.loads(metadata_path.read_text(encoding=_HASH_ENCODING))
+        data: dict[str, Any] = json.loads(metadata_path.read_text(encoding=_HASH_ENCODING))
     except Exception:
         return None
+    return data
 
 
 def _save_metadata(metadata_path: Path, metadata: SourceMetadata) -> None:
@@ -183,7 +184,7 @@ def fetch_to_cache(
             content, resp_etag, resp_last_modified = _fetch_http(
                 url, timeout_s=timeout_s, conditional_headers=cond or None
             )
-            if not content and target.exists() and cond:
+            if not content and target.exists() and prior and cond:
                 existing_meta = SourceMetadata(
                     source_id=source_id,
                     hash=prior["hash"],

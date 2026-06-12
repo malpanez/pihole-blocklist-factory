@@ -4,20 +4,22 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from .config import Settings
+from .types import Source
 
 
 def _load_aggregates_and_stats(
     dist_dir: Path,
-) -> tuple[dict, dict] | tuple[None, None]:
+) -> tuple[dict[str, Any], dict[str, Any]] | tuple[None, None]:
     """Load provenance_aggregates.json and stats.json, return tuple or (None, None) on error."""
     aggregates_file = dist_dir / "reports" / "provenance_aggregates.json"
     if not aggregates_file.exists():
         return None, None
 
     try:
-        aggregates = json.loads(aggregates_file.read_text(encoding="utf-8"))
+        aggregates: dict[str, Any] = json.loads(aggregates_file.read_text(encoding="utf-8"))
     except Exception:
         return None, None
 
@@ -26,25 +28,28 @@ def _load_aggregates_and_stats(
         return None, None
 
     try:
-        stats_data = json.loads(stats_file.read_text(encoding="utf-8"))
+        stats_data: dict[str, Any] = json.loads(stats_file.read_text(encoding="utf-8"))
     except Exception:
         return None, None
 
     return aggregates, stats_data
 
 
-def _load_source_stats(dist_dir: Path) -> dict | None:
+def _load_source_stats(dist_dir: Path) -> dict[str, Any] | None:
     source_stats_file = dist_dir / "reports" / "source_stats.json"
     if not source_stats_file.exists():
         return None
     try:
-        return json.loads(source_stats_file.read_text(encoding="utf-8"))
+        data: dict[str, Any] = json.loads(source_stats_file.read_text(encoding="utf-8"))
     except Exception:
         return None
+    return data
 
 
 def _compute_discard_findings(
-    source_stats_data: dict, source_map: dict, high_discard_threshold: float = 0.5
+    source_stats_data: dict[str, Any],
+    source_map: dict[str, Source],
+    high_discard_threshold: float = 0.5,
 ) -> list[str]:
     findings: list[str] = []
     for src_id, stats in source_stats_data.items():
@@ -63,7 +68,7 @@ def _compute_discard_findings(
     return findings
 
 
-def _compute_overlap_findings(aggregates: dict) -> tuple[list[str], int, int]:
+def _compute_overlap_findings(aggregates: dict[str, Any]) -> tuple[list[str], int, int]:
     """Compute overlap analysis from pre-computed aggregates."""
     findings = []
     overlap_2 = int(aggregates.get("overlap_2", 0))
@@ -82,7 +87,7 @@ def _compute_overlap_findings(aggregates: dict) -> tuple[list[str], int, int]:
 
 
 def _write_quality_report(
-    output_file: Path, total_unique: int, stats_data: dict, findings: list[str]
+    output_file: Path, total_unique: int, stats_data: dict[str, Any], findings: list[str]
 ) -> None:
     """Write quality analysis markdown report."""
     md_lines = [
@@ -116,7 +121,9 @@ def _write_quality_report(
     output_file.write_text("\n".join(md_lines), encoding="utf-8")
 
 
-def analyze_build(dist_dir: Path, settings: Settings, output_file: Path | None = None) -> dict:
+def analyze_build(
+    dist_dir: Path, settings: Settings, output_file: Path | None = None
+) -> dict[str, Any]:
     """Analyze build outputs for errors and quality issues.
 
     Checks for:
@@ -130,7 +137,7 @@ def analyze_build(dist_dir: Path, settings: Settings, output_file: Path | None =
     """
     aggregates, stats_data = _load_aggregates_and_stats(dist_dir)
 
-    if aggregates is None:
+    if aggregates is None or stats_data is None:
         return {"error": "No provenance_aggregates.json or stats.json found. Run build first."}
 
     source_map = {s.id: s for s in settings.sources}

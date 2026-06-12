@@ -29,6 +29,9 @@ jobs:
           uv run ruff check .
           uv run ruff format --check .
 
+      - name: Type check
+        run: uv run mypy --strict src/blocklist_builder
+
       - name: Tests + coverage
         run: |
           PYTHONPATH=src uv run pytest --cov=blocklist_builder --cov-report=term-missing --cov-fail-under=99

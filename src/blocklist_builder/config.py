@@ -3,11 +3,11 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Final, Literal
+from typing import Any, Final, Literal, cast
 
 import yaml
 
-from .types import Profile, Source
+from .types import Category, Profile, Source, Tier
 
 # Configuration constants
 _DEFAULT_CATEGORY_PRECEDENCE: Final = [
@@ -90,10 +90,10 @@ def load_settings(config_dir: Path) -> Settings:
             Source(
                 id=src_id,
                 name=str(item.get("name", src_id)),
-                category=str(item.get("category", "other")),
+                category=cast(Category, str(item.get("category", "other"))),
                 url=str(item["url"]),
                 enabled=bool(item.get("enabled", True)),
-                tier=str(item.get("tier", "stable")),
+                tier=cast(Tier, str(item.get("tier", "stable"))),
                 license=item.get("license"),
                 notes=item.get("notes"),
             )
