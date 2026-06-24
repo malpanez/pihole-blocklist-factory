@@ -268,6 +268,39 @@ def test_resolve_local_sources_http_from_cache(tmp_path: Path) -> None:
     assert result == {"hit": cached_file}
 
 
+def test_process_source_file_worker_carriage_return_only(tmp_path: Path) -> None:
+    """Domains separated only by a bare \\r (no \\n) are both parsed.
+
+    Universal-newline file reading splits on \\r as well; this locks that behavior.
+    """
+    source = tmp_path / "list.txt"
+    # Write raw bytes so the \r is preserved exactly (no normalization on write).
+    source.write_bytes(b"a.example.com\rb.example.com\r")
+    valid, stats = parallel._process_source_file_worker((str(source), [], frozenset()))
+    assert set(valid) == {"a.example.com", "b.example.com"}
+    assert stats["parse_ok"] == 2
+    assert stats["sanitize_ok"] == 2
+
+
+def test_process_source_file_worker_no_trailing_newline(tmp_path: Path) -> None:
+    """A file whose last line has no trailing newline still yields its last domain."""
+    source = tmp_path / "list.txt"
+    source.write_bytes(b"a.example.com\nlast.example.com")
+    valid, stats = parallel._process_source_file_worker((str(source), [], frozenset()))
+    assert set(valid) == {"a.example.com", "last.example.com"}
+    assert stats["parse_ok"] == 2
+
+
+def test_process_source_file_worker_glued_host_ip(tmp_path: Path) -> None:
+    """A glued sink-IP line (0.0.0.0kryptonchain.org) is repaired to a valid domain."""
+    source = tmp_path / "list.txt"
+    source.write_text("0.0.0.0kryptonchain.org\n", encoding="utf-8")
+    valid, stats = parallel._process_source_file_worker((str(source), [], frozenset()))
+    assert valid == ["kryptonchain.org"]
+    assert stats["parse_ok"] == 1
+    assert stats["sanitize_ok"] == 1
+
+
 def test_parallel_process_all_sources_worker_failure(monkeypatch, tmp_path: Path) -> None:
     """Falls back to local processing when a single worker fails."""
     files = {}

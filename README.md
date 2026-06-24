@@ -203,6 +203,11 @@ src/blocklist_builder/
   `sanitize_not_fqdn` and excluded from the output.
 - Wildcard entries (`*.example.com`) are not expanded or mapped to their base domain;
   they are counted under `parse_wildcard` and excluded from the output.
+- Some upstream feeds occasionally concatenate multiple domains with no delimiter
+  (e.g. `init.itunes.apple.comjs.moatads.com`). These are structurally valid FQDNs, so
+  they cannot be split or rejected without risking removal of legitimate domains; they are
+  passed through as-is (a cosmetic, non-functional artifact — Pi-hole never resolves them).
+  Host-IP-glued lines (`0.0.0.0host`) ARE repaired by stripping the sink IP.
 
 ## License
 

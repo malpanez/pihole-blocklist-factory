@@ -93,3 +93,64 @@ def test_parse_wildcard_rejected():
     ok = [x.domain for x in out if x.reason == "ok"]
     assert len(wildcards) == 2
     assert ok == ["good.example.com"]
+
+
+def test_classify_line_glued_host_ip_stripped():
+    """Sink IP glued to a hostname (no separator) is stripped to recover the domain."""
+    from blocklist_builder.parse import classify_line
+
+    assert classify_line("0.0.0.0kryptonchain.org", ()) == (("kryptonchain.org",), "ok")
+    assert classify_line("127.0.0.1evil.example.com", ()) == (("evil.example.com",), "ok")
+    assert classify_line("255.255.255.255bad.example.net", ()) == (
+        ("bad.example.net",),
+        "ok",
+    )
+
+
+def test_classify_line_bare_host_ip_not_stripped():
+    """A bare sink IP (no glued hostname) is never stripped; it stays as the token."""
+    from blocklist_builder.parse import classify_line
+
+    # No char follows the IP -> lookahead fails -> token unchanged. sanitize rejects it later.
+    assert classify_line("0.0.0.0", ()) == (("0.0.0.0",), "ok")
+
+
+def test_classify_line_dotted_after_host_ip_not_stripped():
+    """A dot immediately after the sink IP fails the lookahead; token is left intact."""
+    from blocklist_builder.parse import classify_line
+
+    # Lookahead is (?=[a-z0-9]); a "." after the IP does not match -> no strip.
+    assert classify_line("0.0.0.0.example.com", ()) == (("0.0.0.0.example.com",), "ok")
+
+
+def test_classify_line_standard_hosts_space_regression():
+    """Standard space-delimited hosts lines keep yielding the hostname(s)."""
+    from blocklist_builder.parse import classify_line
+
+    assert classify_line("0.0.0.0 example.com", ()) == (("example.com",), "ok")
+    assert classify_line("0.0.0.0 a.com b.com", ()) == (("a.com", "b.com"), "ok")
+
+
+def test_classify_line_individual_domains_ok():
+    """Individually-presented FQDNs each classify as a single ok domain."""
+    from blocklist_builder.parse import classify_line
+
+    assert classify_line("metrics.apple.com", ()) == (("metrics.apple.com",), "ok")
+    assert classify_line("init.itunes.apple.com", ()) == (("init.itunes.apple.com",), "ok")
+    assert classify_line("js.moatads.com", ()) == (("js.moatads.com",), "ok")
+
+
+def test_classify_line_no_delimiter_concat_known_limitation():
+    """KNOWN LIMITATION (accepted, documented): a no-delimiter concatenation of two FQDNs
+    with NO sink-IP prefix is structurally a valid FQDN and is intentionally NOT split.
+
+    Safe de-concatenation is not achievable without risking removal of legitimate domains
+    (see README "Known limitations"). It is passed through as a single token; Pi-hole never
+    resolves it, so it is a cosmetic, non-functional artifact only.
+    """
+    from blocklist_builder.parse import classify_line
+
+    assert classify_line("init.itunes.apple.comjs.moatads.com", ()) == (
+        ("init.itunes.apple.comjs.moatads.com",),
+        "ok",
+    )

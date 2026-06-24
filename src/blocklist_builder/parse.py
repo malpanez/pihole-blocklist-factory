@@ -8,6 +8,15 @@ from typing import Final, Literal
 # Compile regex patterns once at module load
 _ABP_SIMPLE_PATTERN: Final = re.compile(r"^\|\|(?P<domain>[A-Za-z0-9.-]+)\^$")
 _HOSTS_IP_PREFIXES: Final[frozenset[str]] = frozenset({"0.0.0.0", "127.0.0.1", "::", "0"})
+_GLUED_HOST_IP_RE: Final = re.compile(
+    r"^(?:0\.0\.0\.0|127\.0\.0\.1|255\.255\.255\.255)(?=[a-z0-9])", re.ASCII
+)
+
+
+def _strip_glued_host_ip(token: str) -> str:
+    """Strip a sink IP glued (no separator) to a hostname: 0.0.0.0kryptonchain.org -> kryptonchain.org."""
+    return _GLUED_HOST_IP_RE.sub("", token)
+
 
 # Literal reason strings for type safety
 ReasonType = Literal["ok", "comment", "empty", "unsupported", "invalid", "pattern_drop", "wildcard"]
@@ -44,8 +53,10 @@ def _try_parse_hosts_format(parts: Sequence[str]) -> tuple[str, ...] | None:
 
 def _try_parse_domain_only(parts: Sequence[str]) -> str | None:
     """Try to parse domain-only format (single domain per line)."""
-    if len(parts) == 1 and "." in parts[0] and not parts[0].startswith("||"):
-        return parts[0]
+    if len(parts) == 1 and not parts[0].startswith("||"):
+        token = _strip_glued_host_ip(parts[0])
+        if "." in token:
+            return token
     return None
 
 
