@@ -1,6 +1,6 @@
 [project]
 name = "pihole-blocklist-factory"
-version = "0.1.0"
+version = "0.2.0"
 description = "Build, sanitize, and partition Pi-hole blocklists with reports."
 readme = "README.md"
 requires-python = ">=3.11"
