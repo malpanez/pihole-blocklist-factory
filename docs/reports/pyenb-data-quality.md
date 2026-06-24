@@ -2,6 +2,7 @@
 
 **Repo:** Pyenb/Pi-hole-blocklist — `blocklist.txt` (main)
 **Reported by:** a downstream consumer (pihole-blocklist-factory)
+**Filed upstream:** https://github.com/Pyenb/Pi-hole-blocklist/issues/7
 
 ## Summary
 
