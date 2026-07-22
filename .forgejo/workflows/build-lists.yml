@@ -1,0 +1,66 @@
+# Build the blocklists and publish the `latest` release consumed by Technitium.
+# Ported from .github/workflows/build-lists.yml when this repo moved to the homelab
+# Forgejo. Runs on the self-hosted, firewalled runner (VM 902): it may reach the
+# internet (PyPI + upstream list sources) and the forge, but nothing on the infra
+# range — exactly what this closed-loop job needs.
+name: Build Lists
+on:
+  workflow_dispatch:
+    inputs:
+      build_mode:
+        description: "Build mode: full (fetch) or no-fetch"
+        type: choice
+        options: [full, no-fetch]
+        default: full
+  schedule:
+    - cron: "0 3 * * 0"   # weekly
+    - cron: "0 3 1 * *"   # monthly
+
+jobs:
+  build:
+    # node-22 image, not ubuntu-latest: the runner offers debian-13 / ubuntu-24.04 /
+    # node-22, and node-22-bookworm ships git + node (needed by checkout) while
+    # setup-uv brings its own Python — ubuntu:24.04 has neither preinstalled.
+    runs-on: node-22
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Build lists
+        run: |
+          if [ "${{ github.event.inputs.build_mode }}" = "no-fetch" ]; then
+            uv run blocklist-factory build --no-fetch
+          else
+            uv run blocklist-factory build
+          fi
+
+      # Stage the assets Technitium and its consumers actually pull into a flat dir,
+      # so the release upload does not depend on the action recursing into dist/.
+      - name: Stage release assets
+        run: |
+          mkdir -p release
+          cp dist/all.txt dist/allowlist.txt dist/regex.txt release/
+          cp dist/reports/*.md release/ 2>/dev/null || true
+
+      # Forgejo-native replacement for softprops/action-gh-release (GitHub-only). The
+      # automatic github.token has write:repository on this repo.
+      - name: Publish the `latest` release
+        uses: https://code.forgejo.org/actions/forgejo-release@v2
+        with:
+          direction: upload
+          url: ${{ github.server_url }}
+          repo: ${{ github.repository }}
+          tag: latest
+          title: "Blocklists (latest)"
+          release-notes: "Automated blocklist build — run ${{ github.run_id }}."
+          release-dir: release
+          token: ${{ github.token }}
+          override: true
