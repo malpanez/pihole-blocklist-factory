@@ -1,0 +1,8 @@
+# PaaS pipeline config — consumed by the paas shared library.
+language: python
+# TEMP 0: the library's python coverage uses `--cov=.` (measures the whole repo,
+# not src/blocklist_builder) — see review. Raise once the library scopes --cov.
+coverageThreshold: 0
+security: true
+sonarqube: false          # Sonar is Authelia-gated; scanner can't reach it yet (path-gate pending)
+publishArtifacts: false   # flip to true once a pypi-internal hosted repo exists in Nexus
