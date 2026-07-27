@@ -99,3 +99,15 @@ doh.opendns.com
 # Deliberately NOT matomo.it.dxfeed.com: that one is real analytics and stays blocked.
 ads.atas.net
 services.get.dxfeed.com
+
+# HubSpot CMS website-hosting CDN — NOT tracking. Aggregated sources list these shards
+# as trackers, which breaks every corporate site hosted on HubSpot CMS (hit via
+# www.ampfutures.com -> CNAME -> group25.sites.hscoscdn20.net).
+# HubSpot's real tracking (js.hs-scripts.com, track.hubspot.com, hs-analytics.net) is
+# deliberately NOT allowlisted and stays blocked.
+sites.hscoscdn00.net
+sites.hscoscdn10.net
+sites.hscoscdn20.net
+sites.hscoscdn30.net
+sites.hscoscdn40.net
+sites.hscoscdn-eu1.net
