@@ -93,3 +93,9 @@ dns.cloudflare.com
 one.one.one.one
 dns.quad9.net
 doh.opendns.com
+
+# ATAS / dxFeed — trading platform (see homelab: this has broken twice)
+# Matching is EXACT (no wildcards, no regex), so list the precise hosts.
+# Deliberately NOT matomo.it.dxfeed.com: that one is real analytics and stays blocked.
+ads.atas.net
+services.get.dxfeed.com
