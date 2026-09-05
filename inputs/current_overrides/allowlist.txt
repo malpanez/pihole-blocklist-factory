@@ -27,6 +27,12 @@ init-cdn.itunes-apple.com.akadns.net
 # resolvers with hierarchical block zones (Technitium): ~14k refused lookups / 7 days
 # across three devices, push notifications dead. Found 2026-09-05.
 push.apple.com
+# ...and the akadns CNAME targets behind it. N-courier.push.apple.com is a CNAME to
+# N.courier-push-apple.com.akadns.net, so allowing the apex alone still leaves every
+# courier (the actual APNs connection endpoint) blocked via the chain's target. Found by
+# removing the local override and watching the EDE move from push.apple.com to this name.
+courier-push-apple.com.akadns.net
+courier-sandbox-push-apple.com.akadns.net
 
 # Microsoft servicios esenciales
 login.live.com
