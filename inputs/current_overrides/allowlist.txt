@@ -22,6 +22,11 @@ gsp-ssl.ls.apple.com
 gsp-ssl.ls-apple.com.akadns.net
 init.itunes.apple.com
 init-cdn.itunes-apple.com.akadns.net
+# APNs. Apple lists *.push.apple.com as required (support.apple.com/101555). Pyenb and
+# BlocklistProject-Ads carry the apex, which took init. and every N-courier. with it on
+# resolvers with hierarchical block zones (Technitium): ~14k refused lookups / 7 days
+# across three devices, push notifications dead. Found 2026-09-05.
+push.apple.com
 
 # Microsoft servicios esenciales
 login.live.com
@@ -86,6 +91,10 @@ npm.pkg.github.com
 registry.npmjs.org
 pypi.org
 files.pythonhosted.org
+
+# Banca: hosts de click-tracking de correo transaccional. Cada enlace de los emails del
+# banco pasa por ellos; bloquearlos deja ERR_NAME_NOT_RESOLVED en todos (2026-09-05).
+email.mg.mercury.com
 
 # Proveedores DNS (no bloquear)
 dns.google
