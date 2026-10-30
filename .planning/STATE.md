@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-29)
 Phase: 07
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-06-24 - Completed quick task 260624-jmc: strip glued host-IP prefixes + pyenb upstream report
+Last activity: 2026-10-30 - Completed quick task 261030-hnt: blocklist source review and post-build gate
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -99,6 +99,7 @@ None — both 2026-06-12 todos completed via quick task 260612-hxh.
 | 260612-eki | Repo-wide optimization: baseline metrics, perf/memory, parsing fixes, security/CI hardening | 2026-06-12 | 5d04550 | [260612-eki-repo-wide-optimization-baseline-metrics-](./quick/260612-eki-repo-wide-optimization-baseline-metrics-/) |
 | 260612-hxh | mypy strict adoption (0 errors, blocking CI gate) + profile output dedup (symlinks + manifest) | 2026-06-12 | e9ee762 | [260612-hxh-fix-pending-todos-mypy-strict-adoption-p](./quick/260612-hxh-fix-pending-todos-mypy-strict-adoption-p/) |
 | 260624-jmc | Strip glued host-IP prefixes (4,798 garbage dupes removed, zero legit loss); pyenb upstream report drafted | 2026-06-24 | ce2ea49 | [260624-jmc-strip-glued-host-ip-prefixes-from-domain](./quick/260624-jmc-strip-glued-host-ip-prefixes-from-domain/) |
+| 261030-hnt | Blocklist source review: fix dead sources, drop archived/duplicate/FP-prone, add HaGeZi Pro+TIF and MetaMask, add post-build gate | 2026-10-30 | 0b15511 | [261030-hnt-blocklist-source-review-fix-dead-sources](./quick/261030-hnt-blocklist-source-review-fix-dead-sources/) |
 
 ### Blockers/Concerns
 
