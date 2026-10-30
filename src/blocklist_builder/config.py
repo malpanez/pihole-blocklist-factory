@@ -96,6 +96,7 @@ def load_settings(config_dir: Path) -> Settings:
                 tier=cast(Tier, str(item.get("tier", "stable"))),
                 license=item.get("license"),
                 notes=item.get("notes"),
+                json_key=item.get("json_key"),
             )
         )
 

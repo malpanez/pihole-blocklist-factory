@@ -15,7 +15,11 @@ from typing import Any, Final
 
 from .classify import partition_by_precedence
 from .config import Settings
-from .parallel import parallel_fetch_sources, parallel_process_all_sources
+from .parallel import (
+    SOURCE_MISSING_REASON,
+    parallel_fetch_sources,
+    parallel_process_all_sources,
+)
 from .regex import generate_regex_patterns, write_regex_file
 from .report import Stats, write_reports
 from .sanitize import sanitize_domain
@@ -25,7 +29,6 @@ from .types import Category
 _ENCODING: Final = "utf-8"
 _PARSE_PREFIX: Final = "parse_"
 _SANITIZE_PREFIX: Final = "sanitize_"
-_SOURCE_MISSING_REASON: Final = "source_missing"
 _MARGINAL_JSON_FILE: Final = "marginal.json"
 _MARGINAL_MD_FILE: Final = "marginal.md"
 _MARGINAL_HEADER: Final = "# Marginal contribution por fuente"
@@ -92,9 +95,9 @@ def _resolve_all_source_paths(
         if src_path:
             source_files[src.id] = src_path
         else:
-            discarded[_SOURCE_MISSING_REASON] += 1
+            discarded[SOURCE_MISSING_REASON] += 1
             stats = source_stats.setdefault(src.id, {})
-            stats[_SOURCE_MISSING_REASON] = stats.get(_SOURCE_MISSING_REASON, 0) + 1
+            stats[SOURCE_MISSING_REASON] = stats.get(SOURCE_MISSING_REASON, 0) + 1
     return source_files
 
 
@@ -183,7 +186,8 @@ def _collect_domains(
     )
 
     # Process all sources in parallel (one worker per source)
-    results = parallel_process_all_sources(source_files, drop_patterns, allow)
+    json_keys = {s.id: s.json_key for s in settings.sources if s.enabled and s.json_key}
+    results = parallel_process_all_sources(source_files, drop_patterns, allow, json_keys=json_keys)
 
     # Merge results into global counters and domain mappings
     source_map = {s.id: s for s in settings.sources}

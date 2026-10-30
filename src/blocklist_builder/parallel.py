@@ -9,18 +9,22 @@ Optimizations:
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
-from collections.abc import Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from multiprocessing import cpu_count
 from pathlib import Path
+from typing import Final
 
 from .fetch import _cache_key, fetch_to_cache
 from .parse import classify_line
 from .sanitize import sanitize_domain
 from .types import Source
+
+SOURCE_MISSING_REASON: Final = "source_missing"
 
 
 def get_optimal_workers() -> int:
@@ -114,22 +118,12 @@ def parallel_fetch_sources(
     return result
 
 
-def _process_source_file_worker(
-    args: tuple[str, list[str], frozenset[str]],
+def _process_lines(
+    lines: Iterable[str],
+    patterns: Sequence[re.Pattern[str]],
+    allow: frozenset[str],
 ) -> tuple[list[str], dict[str, int]]:
-    """Process one source file in a worker process.
-
-    Reads the file, parses lines, sanitizes domains, and filters allowlisted entries.
-
-    Args:
-        args: (file_path_str, drop_pattern_texts, allow_frozenset)
-
-    Returns:
-        (valid_domains, stats_dict)
-    """
-    file_path_str, drop_pattern_texts, allow = args
-    patterns = [re.compile(p) for p in drop_pattern_texts] if drop_pattern_texts else []
-
+    """Parse, sanitize and allowlist-filter an iterable of raw lines."""
     valid: list[str] = []
     discarded: dict[str, int] = {}
     parsed_ok = 0
@@ -137,29 +131,28 @@ def _process_source_file_worker(
     allowlisted = 0
     line_count = 0
 
-    with open(file_path_str, encoding="utf-8", errors="ignore") as f:
-        for raw in f:
-            line_count += 1
-            domains, reason = classify_line(raw, patterns)
-            if reason != "ok":
-                key = f"parse_{reason}"
-                discarded[key] = discarded.get(key, 0) + 1
+    for raw in lines:
+        line_count += 1
+        domains, reason = classify_line(raw, patterns)
+        if reason != "ok":
+            key = f"parse_{reason}"
+            discarded[key] = discarded.get(key, 0) + 1
+            continue
+        for domain in domains:
+            if domain.startswith("*."):
+                discarded["parse_wildcard"] = discarded.get("parse_wildcard", 0) + 1
                 continue
-            for domain in domains:
-                if domain.startswith("*."):
-                    discarded["parse_wildcard"] = discarded.get("parse_wildcard", 0) + 1
-                    continue
-                parsed_ok += 1
-                san = sanitize_domain(domain)
-                if san.reason == "ok" and san.domain:
-                    sanitized_ok += 1
-                    if allow and san.domain in allow:
-                        allowlisted += 1
-                    else:
-                        valid.append(san.domain)
+            parsed_ok += 1
+            san = sanitize_domain(domain)
+            if san.reason == "ok" and san.domain:
+                sanitized_ok += 1
+                if allow and san.domain in allow:
+                    allowlisted += 1
                 else:
-                    key = f"sanitize_{san.reason}"
-                    discarded[key] = discarded.get(key, 0) + 1
+                    valid.append(san.domain)
+            else:
+                key = f"sanitize_{san.reason}"
+                discarded[key] = discarded.get(key, 0) + 1
 
     stats = dict(discarded)
     stats["lines"] = line_count
@@ -169,10 +162,74 @@ def _process_source_file_worker(
     return valid, stats
 
 
+def _failed_source_result() -> tuple[list[str], dict[str, int]]:
+    return [], {
+        SOURCE_MISSING_REASON: 1,
+        "lines": 0,
+        "parse_ok": 0,
+        "sanitize_ok": 0,
+        "allowlisted": 0,
+    }
+
+
+def _load_json_entries(file_path_str: str, json_key: str) -> list[str] | None:
+    """Return the string items of the top-level array under json_key, or None on failure.
+
+    Entries are untrusted data. Only strings are kept; they still go through the normal
+    parse and sanitize pipeline. An empty array counts as a failure: a renamed or emptied
+    key is the same upstream break as a missing one.
+    """
+    try:
+        with open(file_path_str, encoding="utf-8", errors="ignore") as f:
+            data = json.load(f)
+    except (OSError, ValueError, RecursionError) as exc:
+        logging.warning(
+            "Cannot read JSON source %s (key %s): %s", file_path_str, json_key, type(exc).__name__
+        )
+        return None
+
+    items = data.get(json_key) if isinstance(data, dict) else None
+    entries = [item for item in items if isinstance(item, str)] if isinstance(items, list) else []
+    if not entries:
+        logging.warning(
+            "JSON source %s has no usable string array under key %s", file_path_str, json_key
+        )
+        return None
+    return entries
+
+
+def _process_source_file_worker(
+    args: tuple[str, list[str], frozenset[str], str | None],
+) -> tuple[list[str], dict[str, int]]:
+    """Process one source file in a worker process.
+
+    Reads the file, parses lines, sanitizes domains, and filters allowlisted entries.
+    With a json_key, only the string items of that top-level array are processed.
+
+    Args:
+        args: (file_path_str, drop_pattern_texts, allow_frozenset, json_key)
+
+    Returns:
+        (valid_domains, stats_dict)
+    """
+    file_path_str, drop_pattern_texts, allow, json_key = args
+    patterns = [re.compile(p) for p in drop_pattern_texts] if drop_pattern_texts else []
+
+    if json_key is not None:
+        entries = _load_json_entries(file_path_str, json_key)
+        if entries is None:
+            return _failed_source_result()
+        return _process_lines(entries, patterns, allow)
+
+    with open(file_path_str, encoding="utf-8", errors="ignore") as f:
+        return _process_lines(f, patterns, allow)
+
+
 def parallel_process_all_sources(
     source_files: dict[str, Path],
     drop_patterns: Sequence[re.Pattern[str]],
     allow: frozenset[str],
+    json_keys: Mapping[str, str] | None = None,
 ) -> dict[str, tuple[list[str], dict[str, int]]]:
     """Process all source files in parallel, one worker per source.
 
@@ -184,6 +241,7 @@ def parallel_process_all_sources(
         source_files: Dict of source_id -> resolved file path.
         drop_patterns: Compiled regex patterns for dropping lines.
         allow: Frozenset of allowlisted domains to exclude.
+        json_keys: Optional source_id -> top-level JSON array key for JSON sources.
 
     Returns:
         Dict of source_id -> (valid_domains, stats_dict).
@@ -192,13 +250,14 @@ def parallel_process_all_sources(
         return {}
 
     drop_pattern_texts = [p.pattern for p in drop_patterns]
+    keys = json_keys or {}
     results: dict[str, tuple[list[str], dict[str, int]]] = {}
 
     # For few sources, skip process pool overhead
     if len(source_files) <= 2:
         for src_id, file_path in source_files.items():
             results[src_id] = _process_source_file_worker(
-                (str(file_path), drop_pattern_texts, allow)
+                (str(file_path), drop_pattern_texts, allow, keys.get(src_id))
             )
         return results
 
@@ -208,7 +267,7 @@ def parallel_process_all_sources(
             futures = {
                 executor.submit(
                     _process_source_file_worker,
-                    (str(file_path), drop_pattern_texts, allow),
+                    (str(file_path), drop_pattern_texts, allow, keys.get(src_id)),
                 ): src_id
                 for src_id, file_path in source_files.items()
             }
@@ -223,7 +282,7 @@ def parallel_process_all_sources(
                         exc_info=True,
                     )
                     results[src_id] = _process_source_file_worker(
-                        (str(source_files[src_id]), drop_pattern_texts, allow)
+                        (str(source_files[src_id]), drop_pattern_texts, allow, keys.get(src_id))
                     )
     except Exception:
         logging.warning(
@@ -233,7 +292,7 @@ def parallel_process_all_sources(
         for src_id, file_path in source_files.items():
             if src_id not in results:
                 results[src_id] = _process_source_file_worker(
-                    (str(file_path), drop_pattern_texts, allow)
+                    (str(file_path), drop_pattern_texts, allow, keys.get(src_id))
                 )
 
     return results

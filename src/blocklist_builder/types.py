@@ -18,6 +18,7 @@ class Source:
     tier: Tier = "stable"
     license: str | None = None
     notes: str | None = None
+    json_key: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

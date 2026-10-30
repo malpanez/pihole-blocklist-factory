@@ -243,3 +243,52 @@ def test_build_debug_log(tmp_path: Path, monkeypatch) -> None:
 
     debug_log = (repo_root / "dist" / "reports" / "debug.log").read_text(encoding="utf-8")
     assert "src1:" in debug_log
+
+
+def test_build_json_source_good_and_malformed(tmp_path: Path) -> None:
+    repo_root = tmp_path
+    good = repo_root / "inputs" / "good.json"
+    bad = repo_root / "inputs" / "bad.json"
+    _write(
+        good,
+        json.dumps(
+            {
+                "blacklist": ["evil.example", "sites.google.com/view/x"],
+                "whitelist": ["fine.example"],
+            }
+        ),
+    )
+    _write(bad, "{broken")
+
+    settings = _settings_for(
+        repo_root,
+        sources=[
+            Source(
+                id="good",
+                name="good",
+                category="malicious",
+                url=str(good),
+                enabled=True,
+                json_key="blacklist",
+            ),
+            Source(
+                id="bad",
+                name="bad",
+                category="malicious",
+                url=str(bad),
+                enabled=True,
+                json_key="blacklist",
+            ),
+        ],
+    )
+
+    stats = build(repo_root, settings, no_fetch=True)
+    assert stats.discarded["source_missing"] == 1
+    assert (repo_root / "dist" / "all.txt").read_text(encoding="utf-8").splitlines() == [
+        "evil.example"
+    ]
+    source_stats = json.loads(
+        (repo_root / "dist" / "reports" / "source_stats.json").read_text(encoding="utf-8")
+    )
+    assert source_stats["bad"]["source_missing"] == 1
+    assert source_stats["good"]["sanitize_ok"] == 1

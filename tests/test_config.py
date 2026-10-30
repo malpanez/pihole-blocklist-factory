@@ -114,3 +114,27 @@ def test_read_yaml_missing(tmp_path: Path) -> None:
     missing = tmp_path / "nope.yml"
     data = config_mod._read_yaml(missing)
     assert data == {}
+
+
+def test_load_settings_reads_json_key(tmp_path: Path) -> None:
+    config_dir = tmp_path / "config"
+    _write(
+        config_dir / "sources.yml",
+        "\n".join(
+            [
+                "sources:",
+                "  - id: js",
+                "    category: malicious",
+                "    url: https://example.test/config.json",
+                "    json_key: blacklist",
+                "  - id: txt",
+                "    category: malicious",
+                "    url: https://example.test/list.txt",
+            ]
+        )
+        + "\n",
+    )
+    settings = config_mod.load_settings(config_dir)
+    by_id = {s.id: s for s in settings.sources}
+    assert by_id["js"].json_key == "blacklist"
+    assert by_id["txt"].json_key is None
