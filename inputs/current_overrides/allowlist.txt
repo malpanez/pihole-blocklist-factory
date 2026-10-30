@@ -126,3 +126,12 @@ sites.hscoscdn20.net
 sites.hscoscdn30.net
 sites.hscoscdn40.net
 sites.hscoscdn-eu1.net
+
+# Forter anti-fraud: exchange login (Binance, KuCoin), where the household holds assets.
+# Query log 2026-10-30: blocked and retried about 300 times on KuCoin sessions. Matching is
+# exact and block lists are hierarchical, so the parents must go too. The other hashed
+# *.forter.com entries are deliberately NOT allowlisted and stay blocked.
+forter.com
+cdn4.forter.com
+c8c1f5bb5eba.cdn4.forter.com
+addfd325e6e3.cdn4.forter.com
