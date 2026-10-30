@@ -1,0 +1,28 @@
+# Login, push and trading dependencies of this household.
+# A failure here means an upstream list started blocking one of them; fix it via allowlist.txt.
+www.binance.com
+accounts.binance.com
+bin.bnbstatic.com
+www.kucoin.com
+challenges.cloudflare.com
+www.tradingview.com
+data.tradingview.com
+static.tradingview.com
+pushstream.tradingview.com
+notifications.tradingview.com
+news-mediator.tradingview.com
+sntp.atas.net
+cfg.atas.net
+img.atas.net
+app.gexbot.com
+www.gexbot.com
+assets.revolut.com
+mercury.com
+email.mg.mercury.com
+push.apple.com
+init.push.apple.com
+courier-push-apple.com.akadns.net
+gateway.icloud.com
+setup.icloud.com
+c8c1f5bb5eba.cdn4.forter.com
+addfd325e6e3.cdn4.forter.com

@@ -12,6 +12,10 @@ on:
         type: choice
         options: [full, no-fetch]
         default: full
+      allow_drop:
+        description: "Skip the shrink check in the gate (intentional large removal of sources)"
+        type: boolean
+        default: false
   schedule:
     - cron: "0 3 * * 0"   # weekly
     - cron: "0 3 1 * *"   # monthly
@@ -42,6 +46,31 @@ jobs:
             uv run blocklist-factory build
           fi
 
+      # The previous release is the baseline for the shrink check. --fail and the rename
+      # matter: a 404 page or a truncated download must not become a tiny "previous" that
+      # lets the drop check pass for the wrong reason.
+      - name: Fetch previous release
+        run: |
+          URL="${{ github.server_url }}/malpanez/pihole-blocklist-factory/releases/download/latest/all.txt"
+          if curl -sS -L --fail --retry 5 --retry-delay 3 --retry-all-errors \
+            --connect-timeout 15 --max-time 300 -o previous-all.txt.part "$URL"; then
+            mv previous-all.txt.part previous-all.txt
+          else
+            rm -f previous-all.txt.part
+            echo "WARNING: previous release not downloadable; the shrink check will be skipped"
+          fi
+
+      # A failure here stops the job before the release is replaced.
+      - name: Gate
+        env:
+          ALLOW_DROP: ${{ github.event.inputs.allow_drop }}
+        run: |
+          if [ "$ALLOW_DROP" = "true" ]; then
+            uv run blocklist-factory gate --previous previous-all.txt --allow-drop
+          else
+            uv run blocklist-factory gate --previous previous-all.txt
+          fi
+
       # Stage the assets Technitium and its consumers actually pull into a flat dir,
       # so the release upload does not depend on the action recursing into dist/.
       - name: Stage release assets
@@ -64,3 +93,16 @@ jobs:
           release-dir: release
           token: ${{ github.token }}
           override: true
+
+      - name: Alert on failure
+        if: failure()
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_number }}
+        run: |
+          curl -sS --retry 3 --retry-delay 3 --retry-all-errors \
+            --connect-timeout 15 --max-time 60 \
+            -H "Title: pihole-blocklist-factory build failed" \
+            -H "Priority: high" \
+            -H "Tags: rotating_light" \
+            --data-binary "pihole-blocklist-factory build failed; the previous release stays published. ${RUN_URL}" \
+            https://ntfy.homelab.test/homelab || true

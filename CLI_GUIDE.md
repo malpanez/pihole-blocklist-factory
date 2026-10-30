@@ -78,6 +78,20 @@ uv run blocklist-factory report
 - Muestra stats en JSON
 - Úsalo para revisar números
 
+#### 7. **Gate** - Comprobar un build antes de publicarlo
+```bash
+uv run blocklist-factory gate --previous previous-all.txt
+```
+- Sale con código 1 e imprime cada fallo si:
+  - alguna fuente falló (`source_missing` > 0 en `dist/reports/stats.json`);
+  - la lista encogió más de `--max-drop` (por defecto 0.10) respecto a `--previous`;
+  - algún nombre de `inputs/current_overrides/must_not_block.txt` (o un dominio padre) está en `dist/all.txt`;
+  - faltan o están vacíos `stats.json`, `all.txt` o el fichero de nombres (falla cerrado).
+- `--previous` es el `all.txt` publicado; sin él, o si no existe, se omite la comprobación de caída con una nota.
+- `--allow-drop` omite solo la comprobación de caída (retirada intencionada de fuentes).
+- Si un nombre protegido aparece bloqueado, corrígelo en `inputs/current_overrides/allowlist.txt`.
+- En el workflow va entre "Build lists" y "Stage release assets": si falla, la release `latest` no se reemplaza y se envía una alerta ntfy.
+
 ---
 
 ## 🚀 Flujo Típico (Completo)

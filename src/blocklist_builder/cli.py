@@ -12,6 +12,7 @@ from .analyze import analyze_build
 from .build import build
 from .config import load_settings
 from .firebog import sync_firebog
+from .gate import run_gate
 from .recommend import compute_recommendations
 
 
@@ -84,6 +85,64 @@ def report() -> None:
     except Exception as e:
         click.secho(f"✗ Error reading stats: {e}", fg="red", err=True)
         raise SystemExit(1) from e
+
+
+@cli.command("gate")
+@click.option(
+    "--dist",
+    "dist",
+    type=click.Path(path_type=Path),
+    default=Path("dist"),
+    show_default=True,
+    help="Build output directory to check.",
+)
+@click.option(
+    "--previous",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Previously published all.txt, for the drop check.",
+)
+@click.option(
+    "--max-drop",
+    type=click.FloatRange(0.0, 1.0),
+    default=0.10,
+    show_default=True,
+    help="Largest tolerated shrink versus --previous, as a fraction.",
+)
+@click.option(
+    "--allow-drop",
+    is_flag=True,
+    help="Skip the drop check (intentional large removal).",
+)
+@click.option(
+    "--must-not-block",
+    "must_not_block",
+    type=click.Path(path_type=Path),
+    default=Path("inputs/current_overrides/must_not_block.txt"),
+    show_default=True,
+    help="File of names that must not appear in, or be covered by, the built list.",
+)
+def gate_cmd(
+    dist: Path,
+    previous: Path | None,
+    max_drop: float,
+    allow_drop: bool,
+    must_not_block: Path,
+) -> None:
+    """Check a finished build before it is published; exit 1 when it is not safe."""
+    result = run_gate(dist, previous, max_drop, allow_drop, must_not_block)
+    for note in result.notes:
+        click.secho(f"  {note}", fg="yellow")
+    if result.failures:
+        for failure in result.failures:
+            click.secho(f"✗ {failure}", fg="red", err=True)
+        raise SystemExit(1)
+    if result.previous is None:
+        summary = f"domains={result.domains} previous=none"
+    else:
+        delta = (result.domains - result.previous) / result.previous
+        summary = f"domains={result.domains} previous={result.previous} delta={delta:+.2%}"
+    click.secho(f"✓ Gate passed: {summary}", fg="green")
 
 
 @cli.command("sync-firebog")

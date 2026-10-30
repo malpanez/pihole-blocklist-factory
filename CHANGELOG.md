@@ -4,6 +4,27 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `blocklist-factory gate`: post-build check that fails on `source_missing`, on a shrink
+  above `--max-drop` versus the published list, and on any name (or parent) from
+  `inputs/current_overrides/must_not_block.txt` appearing in `dist/all.txt`. The workflow
+  runs it before staging the release and sends a high-priority ntfy alert on failure.
+- `json_key` source option: a JSON source contributes only the string items of one
+  top-level array. A malformed file or missing key counts as `source_missing`.
+- Sources `metamask_phishing` (blacklist array only) and `urlhaus_filter` (about 1.9k
+  domains; most of the file is bare IPs, which the sanitizer rejects).
+
+### Changed
+- HaGeZi Pro and TIF now use the `wildcard/*-onlydomains.txt` files on raw.githubusercontent.com
+  (jsDelivr returned 403).
+- Disabled dead or redundant sources: `notracking_tracker`, `blocklistproject_ads`,
+  `easyprivacy_hosts`, `phishing_army`, `pyenb_blocklist`, `urlhaus_online`, `1hosts_lite`,
+  `openphish` (URL feed, every line rejected), and six Firebog entries (FadeMind repos,
+  URLhaus hostfile, `firebog_malicious_5_quidsup_malicious` which yields 0 domains) via id
+  overrides in `config/sources.yml`.
+
 ## [0.2.0] - 2026-06-24
 
 ### Added
