@@ -9,6 +9,7 @@
 # - tier: stable|edge
 # - license: texto corto o URL
 # - notes: riesgo/observaciones
+# - json_key: (opcional) fuente JSON; se usa solo el array de strings bajo esta clave de primer nivel
 
 sources:
   - id: sample_local
@@ -27,20 +28,20 @@ sources:
   - id: hagezi_pro
     name: "HaGeZi Pro"
     category: advertising
-    url: "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/domains/pro.txt"
+    url: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/pro-onlydomains.txt"
     enabled: true
     tier: stable
     license: "GPL-3.0"
-    notes: "Lista Pro de HaGeZi - ads, tracking, analytics. ~350k dominios."
+    notes: "HaGeZi Pro: ads, tracking, analytics. Wildcard format is right because Technitium block lists are hierarchical; jsDelivr @latest/domains returned 403."
 
   - id: hagezi_tif
     name: "HaGeZi Threat Intelligence Feeds"
     category: malicious
-    url: "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/domains/tif.txt"
+    url: "https://raw.githubusercontent.com/hagezi/dns-blocklists/main/wildcard/tif-onlydomains.txt"
     enabled: true
     tier: stable
     license: "GPL-3.0"
-    notes: "Threat Intelligence - malware, phishing, scam, cryptojacking."
+    notes: "Threat intelligence: malware, phishing, scam, cryptojacking. Wildcard format is right because Technitium block lists are hierarchical; jsDelivr @latest/domains returned 403."
 
   # HaGeZi Fake - No disponible como lista separada (incluida en TIF)
   # - id: hagezi_fake
@@ -82,10 +83,10 @@ sources:
     name: "1Hosts Lite"
     category: advertising
     url: "https://raw.githubusercontent.com/badmojr/1Hosts/master/Lite/domains.txt"
-    enabled: true
+    enabled: false
     tier: stable
     license: "MPL-2.0"
-    notes: "Lista mínima pero efectiva - bajo riesgo de falsos positivos."
+    notes: "Disabled: blocks anti-fraud and API hosts on household traffic (api.fraud0.com, service2.us.incognia.com, a-api.anthropic.com, mirrors.hostiserver.com); HaGeZi advises against stacking multi lists; last push 2026-09."
 
   - id: 1hosts_pro
     name: "1Hosts Pro"
@@ -117,10 +118,10 @@ sources:
     name: "URLhaus Malware URLs"
     category: malicious
     url: "https://urlhaus.abuse.ch/downloads/hostfile/"
-    enabled: true
+    enabled: false
     tier: stable
     license: "CC0"
-    notes: "URLs de malware activas reportadas por la comunidad."
+    notes: "Disabled: returns 410 and needs an Auth-Key; replaced by urlhaus_filter."
 
   # ============================================================================
   # NoTracking - https://github.com/notracking/hosts-blocklists
@@ -130,10 +131,10 @@ sources:
     name: "NoTracking Trackers"
     category: tracking
     url: "https://raw.githubusercontent.com/notracking/hosts-blocklists/master/dnscrypt-proxy/dnscrypt-proxy.blacklist.txt"
-    enabled: true
+    enabled: false
     tier: stable
     license: "GPL-3.0"
-    notes: "Trackers y analytics - formato domain-only."
+    notes: "Disabled: repo archived 2023-06."
 
   # ============================================================================
   # Listas específicas para publicidad móvil (Unity Ads, AdMob, AppLovin, etc.)
@@ -160,19 +161,19 @@ sources:
     name: "Pyenb Comprehensive Blocklist"
     category: advertising
     url: "https://raw.githubusercontent.com/Pyenb/Pi-hole-blocklist/refs/heads/main/blocklist.txt"
-    enabled: true
+    enabled: false
     tier: edge
     license: "MIT"
-    notes: "Lista muy agresiva ~2.4M dominios. Puede generar falsos positivos."
+    notes: "Disabled: 4.5M entries, over the 64 MB download cap; historic false-positive source."
 
   - id: blocklistproject_ads
     name: "BlocklistProject Ads"
     category: advertising
     url: "https://blocklistproject.github.io/Lists/ads.txt"
-    enabled: true
+    enabled: false
     tier: stable
     license: "MIT"
-    notes: "Lista de ads del BlocklistProject."
+    notes: "Disabled: repo archived."
 
   - id: perflyst_smarttv
     name: "Perflyst Smart-TV Ads"
@@ -199,19 +200,19 @@ sources:
     name: "OpenPhish Feed"
     category: malicious
     url: "https://openphish.com/feed.txt"
-    enabled: true
+    enabled: false
     tier: stable
     license: "CC BY-NC-SA 4.0"
-    notes: "Sitios de phishing activos detectados automáticamente. Actualizado cada ~12h."
+    notes: "Disabled: the feed is full URLs, every line is rejected by sanitize, and hosts from URL feeds are not safe to block whole (shared hosting)."
 
   - id: phishing_army
     name: "Phishing Army"
     category: malicious
     url: "https://phishing.army/download/phishing_army_blocklist.txt"
-    enabled: true
+    enabled: false
     tier: stable
     license: "CC BY-NC-SA 4.0"
-    notes: "Lista de phishing curada con fuentes múltiples (OpenPhish, PhishTank, etc.)."
+    notes: "Disabled: near-identical subset of the firebog extended list."
 
   # ============================================================================
   # Malware adicional
@@ -232,10 +233,10 @@ sources:
     name: "EasyPrivacy Hosts"
     category: tracking
     url: "https://v.firebog.net/hosts/Easyprivacy.txt"
-    enabled: true
+    enabled: false
     tier: stable
     license: "GPL-3.0"
-    notes: "EasyPrivacy en formato hosts - trackers, analytics, fingerprinting."
+    notes: "Disabled: same URL as firebog_tracking_1_easyprivacy."
 
   # ============================================================================
   # HaGeZi Gambling
@@ -248,3 +249,73 @@ sources:
     tier: stable
     license: "GPL-3.0"
     notes: "Sitios de apuestas y juegos de azar. Deshabilitada por defecto."
+
+  # ============================================================================
+  # URLhaus filter + MetaMask phishing
+  # ============================================================================
+  - id: urlhaus_filter
+    name: "URLhaus Filter (malware-filter)"
+    category: malicious
+    url: "https://malware-filter.gitlab.io/malware-filter/urlhaus-filter-domains.txt"
+    enabled: true
+    tier: stable
+    license: "https://gitlab.com/malware-filter/urlhaus-filter"
+    notes: "URLhaus malware hosts: yields about 1.9k domains because most of the file is bare IPs, which the sanitizer rejects."
+
+  - id: metamask_phishing
+    name: "MetaMask eth-phishing-detect"
+    category: malicious
+    url: "https://raw.githubusercontent.com/MetaMask/eth-phishing-detect/main/src/config.json"
+    json_key: blacklist
+    enabled: true
+    tier: stable
+    license: "https://github.com/MetaMask/eth-phishing-detect"
+    notes: "Crypto phishing. Takes only the blacklist array, never fuzzylist or whitelist, to protect the household's exchange assets. Path entries are rejected and never block the parent domain."
+
+  # ============================================================================
+  # Firebog overrides (config/sources.firebog.yml is generated; do not edit it).
+  # These ids are positional: recheck them after every `blocklist-factory sync-firebog`.
+  # The first id wins and sources.yml loads first. tests/test_sources_config.py fails
+  # if an id disappears or a retired URL ends up enabled.
+  # ============================================================================
+  - id: "firebog_advertising_7_fademind's_unchecky_ads"
+    name: "Fademind's Unchecky Ads"
+    category: advertising
+    url: "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/UncheckyAds/hosts"
+    enabled: false
+    notes: "Disabled: FadeMind repo archived."
+
+  - id: "firebog_malicious_3_fademind's_risky_hosts"
+    name: "Fademind's Risky Hosts"
+    category: malicious
+    url: "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Risk/hosts"
+    enabled: false
+    notes: "Disabled: FadeMind repo archived."
+
+  - id: "firebog_suspicious_2_fademind's_spammers"
+    name: "Fademind's Spammers"
+    category: suspicious
+    url: "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.Spam/hosts"
+    enabled: false
+    notes: "Disabled: FadeMind repo archived."
+
+  - id: "firebog_tracking_3_fademind's_2o7_network_tracker"
+    name: "Fademind's 2o7 Network Trackers"
+    category: tracking
+    url: "https://raw.githubusercontent.com/FadeMind/hosts.extras/master/add.2o7Net/hosts"
+    enabled: false
+    notes: "Disabled: FadeMind repo archived."
+
+  - id: "firebog_malicious_8_urlhaus_malicious_url_blocklis"
+    name: "URLhaus Malicious URL blocklist"
+    category: malicious
+    url: "https://urlhaus.abuse.ch/downloads/hostfile/"
+    enabled: false
+    notes: "Disabled: urlhaus.abuse.ch returns 410; replaced by urlhaus_filter."
+
+  - id: firebog_malicious_5_quidsup_malicious
+    name: "Quidsup Malicious"
+    category: malicious
+    url: "https://gitlab.com/quidsup/notrack-blocklists/raw/master/notrack-malware.txt"
+    enabled: false
+    notes: "Disabled: contributes 0 domains, 125 of 136 lines are parse_unsupported."
