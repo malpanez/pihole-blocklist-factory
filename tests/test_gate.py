@@ -329,3 +329,47 @@ def test_workflow_previous_download_is_atomic_and_fails_closed() -> None:
     assert "--fail" in run
     assert "previous-all.txt.part" in run
     assert "mv previous-all.txt.part previous-all.txt" in run
+
+
+def _write_source_stats(dist: Path, payload: str) -> None:
+    (dist / "reports" / "source_stats.json").write_text(payload, encoding="utf-8")
+
+
+def test_gate_names_the_failed_sources(tmp_path: Path) -> None:
+    dist = _make_dist(tmp_path, discarded={"source_missing": 2})
+    _write_source_stats(
+        dist,
+        json.dumps(
+            {
+                "zeta": {"source_missing": 1, "lines": 0},
+                "alpha": {"source_missing": 1},
+                "fine": {"lines": 10, "sanitize_ok": 9},
+                "zero": {"source_missing": 0},
+                "flag": {"source_missing": True},
+                "odd": "not a dict",
+            }
+        ),
+    )
+    result = _gate(dist, _canaries(tmp_path))
+    assert len(result.failures) == 1
+    assert result.failures[0].endswith(": alpha, zeta")
+    assert "2 source(s)" in result.failures[0]
+
+
+def test_gate_names_sources_through_the_cli(tmp_path: Path) -> None:
+    dist = _make_dist(tmp_path, discarded={"source_missing": 1})
+    _write_source_stats(dist, json.dumps({"cyberhost": {"source_missing": 1}}))
+    args = _cli_args(dist, _canaries(tmp_path))
+    assert cli.main(args) == 1
+    assert "cyberhost" in CliRunner().invoke(cli.cli, args).output
+
+
+@pytest.mark.parametrize("payload", [None, "{broken", "[1, 2]", '{"a": 1}', "{}"])
+def test_gate_falls_back_when_source_stats_is_unusable(tmp_path: Path, payload: str | None) -> None:
+    dist = _make_dist(tmp_path, discarded={"source_missing": 3})
+    if payload is not None:
+        _write_source_stats(dist, payload)
+    result = _gate(dist, _canaries(tmp_path))
+    assert len(result.failures) == 1
+    assert "3 source(s)" in result.failures[0]
+    assert "see reports/source_stats.json" in result.failures[0]

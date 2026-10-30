@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   domains; most of the file is bare IPs, which the sanitizer rejects).
 
 ### Changed
+- Fetch failures that look transient (network errors, 5xx) are retried one source at a time
+  in rounds spaced 30, 60 and 120 seconds after the parallel pass, to ride out bursts of
+  rejected new connections. 4xx, oversized downloads and local-path errors are not retried.
+- The gate now names the sources behind `source_missing` (read from
+  `reports/source_stats.json`).
 - HaGeZi Pro and TIF now use the `wildcard/*-onlydomains.txt` files on raw.githubusercontent.com
   (jsDelivr returned 403).
 - Disabled dead or redundant sources: `notracking_tracker`, `blocklistproject_ads`,

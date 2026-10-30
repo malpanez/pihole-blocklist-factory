@@ -64,6 +64,24 @@ def _read_names(path: Path) -> list[str]:
     return names
 
 
+def _failed_source_ids(source_stats_path: Path) -> list[str]:
+    """Ids of sources with source_missing > 0, or [] when the file is absent or unusable."""
+    try:
+        data = json.loads(source_stats_path.read_text(encoding=_ENCODING))
+    except (OSError, ValueError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    ids: list[str] = []
+    for source_id, counters in data.items():
+        if not isinstance(counters, dict):
+            continue
+        count = counters.get(_SOURCE_MISSING, 0)
+        if isinstance(count, int) and not isinstance(count, bool) and count > 0:
+            ids.append(str(source_id))
+    return sorted(ids)
+
+
 def _source_missing_failures(stats_path: Path) -> list[str]:
     try:
         data = json.loads(stats_path.read_text(encoding=_ENCODING))
@@ -76,10 +94,11 @@ def _source_missing_failures(stats_path: Path) -> list[str]:
     if isinstance(missing, bool) or not isinstance(missing, int):
         return [f"{stats_path} has a non-integer {_SOURCE_MISSING}: {missing!r}"]
     if missing > 0:
-        return [
-            f"{missing} source(s) failed to fetch or parse ({_SOURCE_MISSING}); "
-            "see reports/source_stats.json"
-        ]
+        message = f"{missing} source(s) failed to fetch or parse ({_SOURCE_MISSING})"
+        failed = _failed_source_ids(stats_path.with_name("source_stats.json"))
+        if failed:
+            return [f"{message}: {', '.join(failed)}"]
+        return [f"{message}; see reports/source_stats.json"]
     return []
 
 

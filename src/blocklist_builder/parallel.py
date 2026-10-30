@@ -13,11 +13,14 @@ import json
 import logging
 import os
 import re
+import time
 from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from multiprocessing import cpu_count
 from pathlib import Path
 from typing import Final
+
+import requests
 
 from .fetch import _cache_key, fetch_to_cache
 from .parse import classify_line
@@ -25,6 +28,11 @@ from .sanitize import sanitize_domain
 from .types import Source
 
 SOURCE_MISSING_REASON: Final = "source_missing"
+
+# Seconds to wait before each sequential retry round for sources whose fetch failed with a
+# transient error. This ISP's DS-Lite AFTR rejects new flows in bursts that outlast the
+# short backoff inside _fetch_http, so the rounds are spaced much further apart.
+_FETCH_RETRY_DELAYS_S: Final = (30, 60, 120)
 
 
 def get_optimal_workers() -> int:
@@ -93,6 +101,9 @@ def parallel_fetch_sources(
     enabled = [s for s in sources if s.enabled]
     workers = min(get_optimal_workers(), len(enabled)) if enabled else 1
     result: dict[str, Path | None] = {}
+    pending: dict[str, tuple[Source, Exception]] = {}
+
+    source_by_id = {s.id: s for s in enabled}
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {
@@ -111,11 +122,80 @@ def parallel_fetch_sources(
             try:
                 cache_path, _ = future.result()
                 result[src_id] = cache_path
-            except Exception:
-                logging.warning("Failed to fetch source %s", src_id, exc_info=True)
+            except Exception as exc:
                 result[src_id] = None
+                if _is_retryable(exc):
+                    logging.warning(
+                        "Failed to fetch source %s (%s); will retry", src_id, type(exc).__name__
+                    )
+                    pending[src_id] = (source_by_id[src_id], exc)
+                else:
+                    logging.warning("Failed to fetch source %s", src_id, exc_info=exc)
 
+    _retry_failed_fetches(pending, result, cache_dir, timeout_s, repo_root)
     return result
+
+
+def _is_retryable(exc: Exception) -> bool:
+    """True for transient network failures; 4xx, oversized and local-path errors are permanent."""
+    if not isinstance(exc, requests.RequestException):
+        return False
+    if isinstance(exc, requests.HTTPError):
+        status = exc.response.status_code if exc.response is not None else None
+        return not (status is not None and 400 <= status < 500)
+    return True
+
+
+def _retry_failed_fetches(
+    pending: dict[str, tuple[Source, Exception]],
+    result: dict[str, Path | None],
+    cache_dir: Path,
+    timeout_s: int,
+    repo_root: Path | None,
+) -> None:
+    """Retry transiently failed sources one at a time, in rounds spaced by the retry delays.
+
+    Sequential on purpose: a parallel retry would open another burst of new flows.
+    Updates result in place; sources that still fail keep None.
+    """
+    for round_no, delay in enumerate(_FETCH_RETRY_DELAYS_S, start=1):
+        if not pending:
+            return
+        logging.warning(
+            "Retrying %d failed source(s) in %ds (round %d/%d): %s",
+            len(pending),
+            delay,
+            round_no,
+            len(_FETCH_RETRY_DELAYS_S),
+            ", ".join(pending),
+        )
+        time.sleep(delay)
+        for src_id, (src, _) in list(pending.items()):
+            try:
+                cache_path, _meta = fetch_to_cache(
+                    src.url,
+                    cache_dir,
+                    source_id=src_id,
+                    timeout_s=timeout_s,
+                    allowed_base=repo_root,
+                )
+            except Exception as exc:
+                if _is_retryable(exc):
+                    logging.warning(
+                        "Retry round %d failed for source %s (%s)",
+                        round_no,
+                        src_id,
+                        type(exc).__name__,
+                    )
+                    pending[src_id] = (src, exc)
+                else:
+                    logging.warning("Failed to fetch source %s", src_id, exc_info=exc)
+                    del pending[src_id]
+            else:
+                result[src_id] = cache_path
+                del pending[src_id]
+    for src_id, (_, last_exc) in pending.items():
+        logging.warning("Failed to fetch source %s after all retries", src_id, exc_info=last_exc)
 
 
 def _process_lines(

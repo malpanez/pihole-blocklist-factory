@@ -5,6 +5,7 @@ import logging
 from pathlib import Path
 
 import pytest
+import requests
 
 import blocklist_builder.parallel as parallel
 from blocklist_builder.parallel import (
@@ -522,3 +523,185 @@ def test_parallel_process_all_sources_json_keys_pool_fallback(monkeypatch, tmp_p
         files, [], frozenset(), json_keys={"js": "blacklist"}
     )
     assert result["js"][0] == ["evil.example"]
+
+
+class _Src:
+    def __init__(self, id: str, url: str = "https://example.test/list.txt") -> None:
+        self.id = id
+        self.url = url or id
+        self.enabled = True
+
+
+def _http_error(status: int) -> requests.HTTPError:
+    response = requests.Response()
+    response.status_code = status
+    return requests.HTTPError(f"HTTP {status}", response=response)
+
+
+class _FetchScript:
+    """Scripted fetch_to_cache: per-url list of outcomes (exception or Path), in call order."""
+
+    def __init__(self, script: dict[str, list[Exception | Path]]) -> None:
+        self.script = script
+        self.calls: list[str] = []
+
+    def __call__(self, url, cache_dir, source_id=None, timeout_s=None, allowed_base=None):
+        self.calls.append(source_id)
+        outcome = self.script[source_id].pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome, None
+
+
+@pytest.fixture
+def fetch_env(monkeypatch, tmp_path: Path):
+    sleeps: list[float] = []
+    monkeypatch.setattr(parallel.time, "sleep", sleeps.append)
+    monkeypatch.setattr(parallel, "get_optimal_workers", lambda: 1)
+
+    def install(script: dict[str, list[Exception | Path]]) -> _FetchScript:
+        fake = _FetchScript(script)
+        monkeypatch.setattr(parallel, "fetch_to_cache", fake)
+        return fake
+
+    return sleeps, install
+
+
+def _fetch(sources: list[_Src], tmp_path: Path):
+    return parallel.parallel_fetch_sources(sources, tmp_path / "cache")
+
+
+def test_fetch_retry_delays_constant() -> None:
+    assert parallel._FETCH_RETRY_DELAYS_S == (30, 60, 120)
+
+
+def test_fetch_transient_failure_recovers_on_first_round(fetch_env, tmp_path: Path) -> None:
+    sleeps, install = fetch_env
+    ok = tmp_path / "ok.txt"
+    install({"a": [network_unreachable(), ok], "b": [ok]})
+    result = _fetch([_Src("a"), _Src("b")], tmp_path)
+    assert result == {"a": ok, "b": ok}
+    assert sleeps == [30]
+
+
+def test_fetch_transient_failure_recovers_on_later_round(fetch_env, tmp_path: Path) -> None:
+    sleeps, install = fetch_env
+    ok = tmp_path / "ok.txt"
+    fake = install({"a": [network_unreachable(), network_unreachable(), ok]})
+    result = _fetch([_Src("a")], tmp_path)
+    assert result == {"a": ok}
+    assert sleeps == [30, 60]
+    assert fake.calls == ["a", "a", "a"]
+
+
+def test_fetch_5xx_is_retried(fetch_env, tmp_path: Path) -> None:
+    sleeps, install = fetch_env
+    ok = tmp_path / "ok.txt"
+    install({"a": [_http_error(503), ok]})
+    assert _fetch([_Src("a")], tmp_path) == {"a": ok}
+    assert sleeps == [30]
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        _http_error(404),
+        _http_error(403),
+        ValueError("local source escapes allowed base"),
+        None,
+    ],
+)
+def test_fetch_permanent_failure_is_not_retried_or_slept_for(
+    fetch_env, tmp_path: Path, exc: Exception | None
+) -> None:
+    from blocklist_builder.fetch import DownloadTooLargeError
+
+    sleeps, install = fetch_env
+    error = exc if exc is not None else DownloadTooLargeError("too big")
+    fake = install({"a": [error]})
+    assert _fetch([_Src("a")], tmp_path) == {"a": None}
+    assert sleeps == []
+    assert fake.calls == ["a"]
+
+
+def test_fetch_failing_every_round_ends_as_none(fetch_env, tmp_path: Path, caplog) -> None:
+    sleeps, install = fetch_env
+    fake = install({"a": [network_unreachable() for _ in range(4)]})
+    with caplog.at_level(logging.WARNING):
+        result = _fetch([_Src("a")], tmp_path)
+    assert result == {"a": None}
+    assert sleeps == [30, 60, 120]
+    assert fake.calls == ["a"] * 4
+    final = [r for r in caplog.records if "after all retries" in r.getMessage()]
+    assert len(final) == 1
+    assert final[0].exc_info is not None
+    intermediate = [r for r in caplog.records if "will retry" in r.getMessage()]
+    assert intermediate
+    assert all(r.exc_info is None for r in intermediate)
+
+
+def test_fetch_retry_rounds_run_one_source_at_a_time(fetch_env, tmp_path: Path) -> None:
+    sleeps, install = fetch_env
+    ok = tmp_path / "ok.txt"
+    fake = install(
+        {
+            "a": [network_unreachable(), ok],
+            "b": [network_unreachable(), network_unreachable(), ok],
+            "c": [network_unreachable(), ok],
+        }
+    )
+    result = _fetch([_Src("a"), _Src("b"), _Src("c")], tmp_path)
+    assert result == {"a": ok, "b": ok, "c": ok}
+    # first pass (1 worker, in order), then round 1 over all three, then round 2 over b only
+    assert fake.calls == ["a", "b", "c", "a", "b", "c", "b"]
+    assert sleeps == [30, 60]
+
+
+def test_fetch_stops_when_nothing_is_left(fetch_env, tmp_path: Path) -> None:
+    sleeps, install = fetch_env
+    install({"a": [tmp_path / "ok.txt"]})
+    _fetch([_Src("a")], tmp_path)
+    assert sleeps == []
+
+
+def test_fetch_delays_come_from_the_constant(fetch_env, monkeypatch, tmp_path: Path) -> None:
+    sleeps, install = fetch_env
+    monkeypatch.setattr(parallel, "_FETCH_RETRY_DELAYS_S", (1, 2))
+    fake = install({"a": [network_unreachable() for _ in range(3)]})
+    assert _fetch([_Src("a")], tmp_path) == {"a": None}
+    assert sleeps == [1, 2]
+    assert fake.calls == ["a"] * 3
+
+
+def test_fetch_mixed_permanent_and_transient(fetch_env, tmp_path: Path) -> None:
+    sleeps, install = fetch_env
+    ok = tmp_path / "ok.txt"
+    fake = install({"gone": [_http_error(404)], "flaky": [network_unreachable(), ok]})
+    result = _fetch([_Src("gone"), _Src("flaky")], tmp_path)
+    assert result == {"gone": None, "flaky": ok}
+    assert fake.calls.count("gone") == 1
+    assert sleeps == [30]
+
+
+def test_fetch_no_fetch_never_sleeps(monkeypatch, tmp_path: Path) -> None:
+    sleeps: list[float] = []
+    monkeypatch.setattr(parallel.time, "sleep", sleeps.append)
+    result = parallel.parallel_fetch_sources(
+        [_Src("a", "https://example.test/x.txt")], tmp_path / "cache", no_fetch=True
+    )
+    assert result == {}
+    assert sleeps == []
+
+
+def network_unreachable() -> requests.ConnectionError:
+    return requests.ConnectionError("[Errno 101] Network is unreachable")
+
+
+def test_fetch_failure_turning_permanent_in_a_retry_round_stops_retrying(
+    fetch_env, tmp_path: Path
+) -> None:
+    sleeps, install = fetch_env
+    fake = install({"a": [network_unreachable(), _http_error(404)]})
+    assert _fetch([_Src("a")], tmp_path) == {"a": None}
+    assert sleeps == [30]
+    assert fake.calls == ["a", "a"]

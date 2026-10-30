@@ -48,7 +48,7 @@ Fixed the source set (HaGeZi wildcard URLs, 7 dead or redundant sources and 5 Fi
 
 ## Verification (observed)
 
-- `pytest --cov-fail-under=99`: 221 passed (baseline 141), coverage 100%, gate.py 100%.
+- `pytest --cov-fail-under=99`: 243 passed (221 before the retry follow-up) (baseline 141), coverage 100%, gate.py 100%.
 - `ruff check --no-fix .` clean, `ruff format --check .` clean, `mypy --strict src/blocklist_builder` clean, `blocklist-factory validate` ok (48 sources, rerun after the driver follow-ups), `blocklist-factory gate --help` ok.
 - shellcheck `-s sh` clean on the 3 new `run:` blocks (`${{ }}` replaced by placeholders in a scratch copy, removed).
 - Real build: exit 0, 3:06.78 wall, max RSS 1,980,236 KB (1.9 GiB). 2,513,302 unique domains, `source_missing` absent (0).
@@ -70,6 +70,16 @@ None to code behavior. Two facts in `verified_at_planning` turned out wrong at s
 1. `urlhaus_filter` notes (and CHANGELOG) now say it yields about 1.9k domains because most of the file is bare IPs rejected by the sanitizer. The SUMMARY's Assumption Drift entry already carried the measured numbers.
 2. Disabled the two zero-contribution sources with a one-line reason each: `openphish` (full-URL feed, every line rejected, hosts from URL feeds unsafe to block whole) and `firebog_malicious_5_quidsup_malicious` (id override in the Firebog overrides block, id/name/url/category copied from `sources.firebog.yml`; 125 of 136 lines `parse_unsupported`). Both added to `DISABLED_IDS` in `tests/test_sources_config.py`; the Firebog override check now derives its ids from the `firebog_` prefix. CHANGELOG updated. No parsing code changed, so no rebuild was done.
 3. `.pre-commit-config.yaml`: ruff-pre-commit `rev` v0.9.21 (does not exist upstream) changed to `v0.14.14`, matching `ruff 0.14.14` locked in uv.lock; `git ls-remote --tags` confirms the tag. `pre-commit run --files` over the 17 changed and new files (not uv.lock, .vscode or .planning): `ruff (legacy alias)` Passed, `ruff format` Passed. These are the only two hooks configured. No hook modified any file (`git status --short` identical before and after).
+
+## Follow-up: spaced fetch retries and named gate failures
+
+Evidence (Forgejo run 36, 2026-10-30 13:14): 4 of 30 sources failed with `[Errno 101] Network is unreachable` within a few seconds, a burst longer than `_fetch_http`'s 1s/2s backoff.
+
+- `parallel_fetch_sources` (fetch mode only): after the parallel pass, transiently failed sources are retried sequentially in rounds, sleeping `_FETCH_RETRY_DELAYS_S = (30, 60, 120)` before each, stopping as soon as none are left. Retryable means `requests.RequestException` other than an HTTP 4xx; `DownloadTooLargeError`, containment and other errors are permanent and are not retried or slept for. Intermediate failures log a warning with source id and exception type (no traceback); the final failure logs once with `exc_info`. Still-failing sources stay `None`. `no_fetch` is unchanged.
+- `gate`: when `source_missing` > 0 the failure lists the ids from `reports/source_stats.json`; a missing, malformed or wrong-shape file keeps the previous message.
+- Tests (sleep patched, none real): recovery on round 1 and on a later round, 5xx retried, 4xx/oversized/containment not retried or slept for, failing all rounds ends as `None` with one traceback warning, rounds run one source at a time, delays come from the constant, a retry that turns permanent stops, `no_fetch` never sleeps; gate names ids (also via the CLI) and falls back for missing, malformed and wrong-shape files.
+- Observed: 243 tests pass, coverage 100% (parallel.py and gate.py 100%), ruff check/format and `mypy --strict src` clean. No build was run; the retry behavior against the real ISP burst is not verified here.
+- Note: while writing it, mypy rejected reusing `exc` as a loop variable after `except ... as exc`; the loop variable was renamed `last_exc`.
 
 ## Findings (pre-existing, not touched)
 
